@@ -1,4 +1,9 @@
-# PF2e Autoloot
+# PF2e Curated Autoloot
+
+fork of pf2e-autoloot by ZzinnerGamer https://github.com/ZzinnerGamer/pf2e-autoloot
+
+My intention here is to experiment with giving more useful magic items that are specific to the current party comp.
+
 
 A lightweight Foundry VTT module for **Pathfinder 2e** that automatically populates loot containers as you open or reroll them. It uses smart budgets based on party level, rarity-weighted selection, and configurable rules per container type. (Heavely based on BG3 loot system).
 
@@ -64,5 +69,3 @@ https://github.com/user-attachments/assets/aab40104-b5da-47b8-937c-651779a485b1
 * Thanks to the PF2e & Foundry communities for the amazing ecosystem.
 
 ---
-
-If you want to localize the module to your own language, tag me on Foundry or PF2e Foundry servers or send me a DM @Zinneryte. [Here is the gitlocalize link.](https://gitlocalize.com/repo/10503)
