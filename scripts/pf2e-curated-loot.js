@@ -124,6 +124,40 @@ const CLASS_PROFILES = {
 const SCROLL_ITEM_LEVEL_BY_RANK = { 1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 11, 7: 13, 8: 15, 9: 17, 10: 19 };
 const SCROLL_PRICE_BY_RANK = { 1: 4, 2: 12, 3: 30, 4: 70, 5: 150, 6: 300, 7: 600, 8: 1300, 9: 3000, 10: 8000 };
 
+const CURRENCY_KEYS = ["pp", "gp", "sp", "cp", "credits", "upb"];
+
+function readCurrencyNumber(value) {
+  if (value == null) return 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string") return Number(value) || 0;
+  if (value && typeof value === "object" && !Array.isArray(value) && "value" in value) return Number(value.value) || 0;
+  return Number(value) || 0;
+}
+
+function writeCurrencyLike(existingValue, amount) {
+  if (existingValue && typeof existingValue === "object" && !Array.isArray(existingValue) && "value" in existingValue) {
+    return { ...existingValue, value: amount };
+  }
+  return amount;
+}
+
+function hasAnyCurrencyObj(obj) {
+  if (!obj || typeof obj !== "object") return false;
+  return CURRENCY_KEYS.some(key => readCurrencyNumber(obj[key]) > 0);
+}
+
+function mergeCurrency(existingCurrency, addedCurrency) {
+  const base = existingCurrency && typeof existingCurrency === "object" ? foundry.utils.deepClone(existingCurrency) : {};
+  const added = addedCurrency && typeof addedCurrency === "object" ? addedCurrency : {};
+  const out = { ...base };
+  for (const key of CURRENCY_KEYS) {
+    if (!(key in added) && !(key in base)) continue;
+    const next = readCurrencyNumber(base[key]) + readCurrencyNumber(added[key]);
+    out[key] = writeCurrencyLike(base[key], next);
+  }
+  return out;
+}
+
 const cache = {
   ready: false,
   entries: [],
@@ -984,10 +1018,24 @@ async function generateCuratedLoot(actor, { mode = "session" } = {}) {
   let currency = plan.currency;
   if (softCap > 0 && itemValue + currency > softCap) currency = Math.max(0, Math.floor(softCap - itemValue));
 
-  if (toCreate.length) await actor.createEmbeddedDocuments("Item", toCreate);
+  if (toCreate.length) {
+    try {
+      await actor.createEmbeddedDocuments("Item", toCreate);
+    } catch (error) {
+      console.error(`${MODULE}: failed while creating curated item documents`, { mode, actor, toCreate, error });
+      ui.notifications?.error("Curated loot failed while creating item documents. See console for the item source that failed.");
+      throw error;
+    }
+  }
   if (currency > 0) {
-    await addCurrencyGP(actor, currency);
-    summary.push(`Currency: ${currency} gp equivalent`);
+    try {
+      await addCurrencyGP(actor, currency);
+      summary.push(`Currency: ${currency} gp equivalent`);
+    } catch (error) {
+      console.error(`${MODULE}: failed while adding curated currency`, { mode, actor, currency, error });
+      ui.notifications?.error("Curated loot failed while adding currency. See console for details.");
+      throw error;
+    }
   }
 
   const names = ctx.actors.map(a => a.name).join(", ") || "fallback party";
@@ -1210,41 +1258,44 @@ function currencyFromGP(gpAmount) {
 
 async function addCurrencyGP(actor, gpAmount) {
   const currency = currencyFromGP(gpAmount);
+  if (!hasAnyCurrencyObj(currency)) return false;
+
   const inv = actor?.inventory;
   try {
-    const Coins = inv?.coins?.constructor?.fromObject ? inv.coins.constructor : game?.pf2e?.Coins;
-    const coins = Coins?.fromObject ? Coins.fromObject(currency) : currency;
+    const Coins =
+      (inv?.coins?.constructor && typeof inv.coins.constructor.fromObject === "function" ? inv.coins.constructor : null)
+      || (game?.pf2e?.Coins && typeof game.pf2e.Coins.fromObject === "function" ? game.pf2e.Coins : null)
+      || (game?.sf2e?.Coins && typeof game.sf2e.Coins.fromObject === "function" ? game.sf2e.Coins : null);
+    const coins = Coins ? Coins.fromObject(currency) : currency;
     if (inv?.addCurrency) return await inv.addCurrency(coins);
     if (inv?.addCoins) return await inv.addCoins(coins);
   } catch (error) {
-    console.warn(`${MODULE}: PF2e coin API failed; falling back to actor update`, error);
+    console.warn(`${MODULE}: PF2e/SF2e coin API failed; falling back to safe currency merge`, error);
   }
 
-  const path = "system.currency";
-  const valueShapeUpdate = {};
-  const numberShapeUpdate = {};
+  // Do not read paths like system.currency.gp.value. In worlds where gp is a
+  // bare number, Foundry's getProperty can throw:
+  // "Cannot use 'in' operator to search for 'value' in 1".
+  // Instead, copy the existing currency container and preserve each coin's
+  // existing shape: number stays number, { value } stays { value }.
+  const path = actor?.system?.currency ? "system.currency"
+    : actor?.system?.coins ? "system.coins"
+    : actor?.system?.resources?.currency ? "system.resources.currency"
+    : "system.currency";
 
-  for (const [key, added] of Object.entries(currency)) {
-    const valuePath = `${path}.${key}.value`;
-    const numberPath = `${path}.${key}`;
-    const currentValue = foundry.utils.getProperty(actor, valuePath);
-    const currentDirect = foundry.utils.getProperty(actor, numberPath);
-    const current = Number(
-      currentValue ??
-      (currentDirect && typeof currentDirect === "object" && !Array.isArray(currentDirect) ? currentDirect.value : currentDirect) ??
-      0
-    ) || 0;
-    valueShapeUpdate[valuePath] = current + added;
-    numberShapeUpdate[numberPath] = current + added;
-  }
-
-  // Try the PF2e v13 value-object currency shape first. If a world/system build
-  // still uses bare numeric currency, fall back to that shape without surfacing
-  // the intermediate schema error to the GM.
+  let existing = {};
   try {
-    return await actor.update(valueShapeUpdate);
-  } catch (valueShapeError) {
-    console.warn(`${MODULE}: value-shaped currency update failed; trying numeric currency update`, valueShapeError);
-    return actor.update(numberShapeUpdate);
+    existing = foundry.utils.getProperty(actor, path) ?? {};
+  } catch (error) {
+    console.warn(`${MODULE}: direct currency container read failed; using empty currency fallback`, error);
+    existing = {};
+  }
+
+  const merged = mergeCurrency(existing, currency);
+  try {
+    return await actor.update({ [path]: merged });
+  } catch (error) {
+    console.error(`${MODULE}: failed to add currency`, { actor, path, existing, currency, merged, error });
+    throw error;
   }
 }
