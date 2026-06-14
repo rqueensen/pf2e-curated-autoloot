@@ -66,8 +66,5 @@
       }
     ]
   },
-  "description": "A lightweight Foundry VTT module for Pathfinder 2e that automatically populates loot containers as you open or reroll them.\nIt uses smart budgets based on party level, rarity-weighted selection, and configurable rules per container type. (Heavely based on BG3 loot system).",
-  "url": "#{URL}#",
-  "manifest": "#{MANIFEST}#",
-  "download": "#{DOWNLOAD}#"
+  "description": "A lightweight Foundry VTT module for Pathfinder 2e that automatically populates loot containers as you open or reroll them.\nIt uses smart budgets based on party level, rarity-weighted selection, and configurable rules per container type. (Heavely based on BG3 loot system)."
 }
