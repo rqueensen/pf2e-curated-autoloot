@@ -2,41 +2,34 @@
  * PF2e Curated Autoloot extension
  *
  * Add this file to module.json esmodules after scripts/pf2e-autoloot.js.
- * It provides a curated, party-aware loot generator while leaving the
- * original module in place.
+ * This file is intentionally additive: it keeps the original module's roll-loot
+ * path intact and adds curated, party-aware treasure buttons/API.
  */
 
 const MODULE = "pf2e-autoloot";
 const API_NAME = "pf2eCuratedAutoloot";
 
 const TREASURE_BY_LEVEL = {
-  1: { permanent: { 2: 2, 1: 2 }, consumable: { 2: 2, 1: 3 }, currency: 40, extraPc: 10 },
-  2: { permanent: { 3: 2, 2: 2 }, consumable: { 3: 2, 2: 2, 1: 2 }, currency: 70, extraPc: 18 },
-  3: { permanent: { 4: 2, 3: 2 }, consumable: { 4: 2, 3: 2, 2: 2 }, currency: 120, extraPc: 30 },
-  4: { permanent: { 5: 2, 4: 2 }, consumable: { 5: 2, 4: 2, 3: 2 }, currency: 200, extraPc: 50 },
-  5: { permanent: { 6: 2, 5: 2 }, consumable: { 6: 2, 5: 2, 4: 2 }, currency: 320, extraPc: 80 },
-  6: { permanent: { 7: 2, 6: 2 }, consumable: { 7: 2, 6: 2, 5: 2 }, currency: 500, extraPc: 125 },
-  7: { permanent: { 8: 2, 7: 2 }, consumable: { 8: 2, 7: 2, 6: 2 }, currency: 720, extraPc: 180 },
-  8: { permanent: { 9: 2, 8: 2 }, consumable: { 9: 2, 8: 2, 7: 2 }, currency: 1000, extraPc: 250 },
-  9: { permanent: { 10: 2, 9: 2 }, consumable: { 10: 2, 9: 2, 8: 2 }, currency: 1400, extraPc: 350 },
-  10: { permanent: { 11: 2, 10: 2 }, consumable: { 11: 2, 10: 2, 9: 2 }, currency: 2000, extraPc: 500 },
-  11: { permanent: { 12: 2, 11: 2 }, consumable: { 12: 2, 11: 2, 10: 2 }, currency: 2800, extraPc: 700 },
-  12: { permanent: { 13: 2, 12: 2 }, consumable: { 13: 2, 12: 2, 11: 2 }, currency: 4000, extraPc: 1000 },
-  13: { permanent: { 14: 2, 13: 2 }, consumable: { 14: 2, 13: 2, 12: 2 }, currency: 6000, extraPc: 1500 },
-  14: { permanent: { 15: 2, 14: 2 }, consumable: { 15: 2, 14: 2, 13: 2 }, currency: 9000, extraPc: 2250 },
-  15: { permanent: { 16: 2, 15: 2 }, consumable: { 16: 2, 15: 2, 14: 2 }, currency: 13000, extraPc: 3250 },
-  16: { permanent: { 17: 2, 16: 2 }, consumable: { 17: 2, 16: 2, 15: 2 }, currency: 20000, extraPc: 5000 },
-  17: { permanent: { 18: 2, 17: 2 }, consumable: { 18: 2, 17: 2, 16: 2 }, currency: 30000, extraPc: 7500 },
-  18: { permanent: { 19: 2, 18: 2 }, consumable: { 19: 2, 18: 2, 17: 2 }, currency: 48000, extraPc: 12000 },
-  19: { permanent: { 20: 2, 19: 2 }, consumable: { 20: 2, 19: 2, 18: 2 }, currency: 80000, extraPc: 20000 },
-  20: { permanent: { 20: 4 }, consumable: { 20: 4, 19: 2 }, currency: 140000, extraPc: 35000 },
-};
-
-const TOTAL_VALUE_BY_LEVEL = {
-  1: 175, 2: 300, 3: 500, 4: 850, 5: 1350, 6: 2000, 7: 2900,
-  8: 4000, 9: 5700, 10: 8000, 11: 11500, 12: 16500,
-  13: 25000, 14: 36500, 15: 54500, 16: 82500, 17: 128000,
-  18: 208000, 19: 355000, 20: 490000,
+  1: { total: 175, permanent: { 2: 2, 1: 2 }, consumable: { 2: 2, 1: 3 }, currency: 40, extraPc: 10 },
+  2: { total: 300, permanent: { 3: 2, 2: 2 }, consumable: { 3: 2, 2: 2, 1: 2 }, currency: 70, extraPc: 18 },
+  3: { total: 500, permanent: { 4: 2, 3: 2 }, consumable: { 4: 2, 3: 2, 2: 2 }, currency: 120, extraPc: 30 },
+  4: { total: 850, permanent: { 5: 2, 4: 2 }, consumable: { 5: 2, 4: 2, 3: 2 }, currency: 200, extraPc: 50 },
+  5: { total: 1350, permanent: { 6: 2, 5: 2 }, consumable: { 6: 2, 5: 2, 4: 2 }, currency: 320, extraPc: 80 },
+  6: { total: 2000, permanent: { 7: 2, 6: 2 }, consumable: { 7: 2, 6: 2, 5: 2 }, currency: 500, extraPc: 125 },
+  7: { total: 2900, permanent: { 8: 2, 7: 2 }, consumable: { 8: 2, 7: 2, 6: 2 }, currency: 720, extraPc: 180 },
+  8: { total: 4000, permanent: { 9: 2, 8: 2 }, consumable: { 9: 2, 8: 2, 7: 2 }, currency: 1000, extraPc: 250 },
+  9: { total: 5700, permanent: { 10: 2, 9: 2 }, consumable: { 10: 2, 9: 2, 8: 2 }, currency: 1400, extraPc: 350 },
+  10: { total: 8000, permanent: { 11: 2, 10: 2 }, consumable: { 11: 2, 10: 2, 9: 2 }, currency: 2000, extraPc: 500 },
+  11: { total: 11500, permanent: { 12: 2, 11: 2 }, consumable: { 12: 2, 11: 2, 10: 2 }, currency: 2800, extraPc: 700 },
+  12: { total: 16500, permanent: { 13: 2, 12: 2 }, consumable: { 13: 2, 12: 2, 11: 2 }, currency: 4000, extraPc: 1000 },
+  13: { total: 25000, permanent: { 14: 2, 13: 2 }, consumable: { 14: 2, 13: 2, 12: 2 }, currency: 6000, extraPc: 1500 },
+  14: { total: 36500, permanent: { 15: 2, 14: 2 }, consumable: { 15: 2, 14: 2, 13: 2 }, currency: 9000, extraPc: 2250 },
+  15: { total: 54500, permanent: { 16: 2, 15: 2 }, consumable: { 16: 2, 15: 2, 14: 2 }, currency: 13000, extraPc: 3250 },
+  16: { total: 82500, permanent: { 17: 2, 16: 2 }, consumable: { 17: 2, 16: 2, 15: 2 }, currency: 20000, extraPc: 5000 },
+  17: { total: 128000, permanent: { 18: 2, 17: 2 }, consumable: { 18: 2, 17: 2, 16: 2 }, currency: 30000, extraPc: 7500 },
+  18: { total: 208000, permanent: { 19: 2, 18: 2 }, consumable: { 19: 2, 18: 2, 17: 2 }, currency: 48000, extraPc: 12000 },
+  19: { total: 355000, permanent: { 20: 2, 19: 2 }, consumable: { 20: 2, 19: 2, 18: 2 }, currency: 80000, extraPc: 20000 },
+  20: { total: 490000, permanent: { 20: 4 }, consumable: { 20: 4, 19: 2 }, currency: 140000, extraPc: 35000 },
 };
 
 const DEFAULT_JUNK_REGEX = [
@@ -45,77 +38,99 @@ const DEFAULT_JUNK_REGEX = [
   "lumber", "timber", "ore", "ingot", "hide", "pelt", "cloth", "textile",
   "bottle", "jug", "mug", "plate", "cup", "fork", "spoon", "broom", "bucket",
   "ladder", "pole", "tent", "bedroll", "backpack", "sack", "satchel", "barrel",
-  "crate", "chest", "tool", "artisan", "trade good", "livestock", "feed", "hay"
+  "crate", "chest", "artisan", "trade good", "livestock", "feed", "hay"
 ].join("|");
 
-const COMMON_PERMANENT_KEYWORDS = [
-  "rune", "weapon potency", "striking", "resilient", "reinforcing", "property rune",
-  "wand", "staff", "spellheart", "aeon stone", "spacious pouch", "bag of holding",
-  "cloak", "boots", "gloves", "gauntlets", "goggles", "lenses", "bracers", "robe",
-  "ring", "amulet", "pendant", "belt", "headband", "crown", "hat", "mask",
-  "armor", "shield", "buckler", "talisman cord", "wayfinder", "grimoire"
+const STORY_OR_NO_RANDOM_REGEX = [
+  "devil'?s contract", "devil'?s luck", "contract", "pact", "boon", "curse", "cursed",
+  "artifact", "relic", "story", "quest", "favor", "blessing", "unique", "campaign"
+].join("|");
+
+const GENERAL_PERMANENT_KEYWORDS = [
+  "spacious pouch", "bag of holding", "cloak", "boots", "gloves", "gauntlets", "goggles",
+  "lenses", "bracers", "ring", "amulet", "pendant", "belt", "headband", "hat", "mask",
+  "wayfinder", "scroll belt"
 ];
 
-const COMMON_CONSUMABLE_KEYWORDS = [
-  "potion", "elixir", "elixir of life", "scroll", "wand", "oil", "talisman", "fulu",
-  "mutagen", "bomb", "antidote", "antiplague", "catalyst", "spell catalyst", "snare",
-  "healing", "invisibility", "flight", "flying", "darkvision", "resistance"
+const CASTER_PERMANENT_KEYWORDS = [
+  "staff", "wand", "spellheart", "grimoire", "spellbook", "robe", "crown", "diadem", "focus"
 ];
+
+const MARTIAL_PERMANENT_KEYWORDS = [
+  "rune", "weapon potency", "striking", "resilient", "reinforcing", "property rune",
+  "armor", "shield", "buckler", "handwraps"
+];
+
+const GENERAL_CONSUMABLE_KEYWORDS = [
+  "healing potion", "elixir of life", "potion", "elixir", "antidote", "antiplague",
+  "antivenom", "darkvision", "invisibility", "healing", "resistance", "snapleaf"
+];
+
+const CASTER_CONSUMABLE_KEYWORDS = [
+  "scroll", "catalyst", "spell catalyst", "chaos falcon feather", "kirin echo chime", "fulu"
+];
+
+const MARTIAL_CONSUMABLE_KEYWORDS = [
+  "oil", "talisman", "ammunition", "arrow", "bolt", "throwing", "weapon", "armor"
+];
+
+const ALCHEMICAL_CONSUMABLE_KEYWORDS = [
+  "bomb", "mutagen", "poison", "drug", "alchemical", "snare"
+];
+
+const ROLE_KEYWORDS = {
+  martial: ["rune", "weapon", "striking", "potency", "armor", "shield", "buckler", "talisman", "oil", "handwraps"],
+  caster: ["staff", "wand", "scroll", "spellheart", "grimoire", "spellbook", "robe", "ring", "focus", "catalyst", "fulu"],
+  alchemical: ["alchemical", "elixir", "bomb", "mutagen", "antidote", "antiplague", "poison", "drug", "goggles"],
+  shield: ["shield", "reinforcing", "buckler"],
+  armor: ["armor", "resilient", "fortification", "shadow", "slick"],
+  weapon: ["weapon", "striking", "potency", "rune"],
+  ranged: ["bow", "crossbow", "ammunition", "arrow", "bolt", "scope", "thrower"],
+  skill: ["thievery", "stealth", "diplomacy", "deception", "intimidation", "medicine", "occultism", "arcana", "nature", "religion", "society", "survival", "athletics", "acrobatics", "performance", "crafting"],
+  occult: ["occult", "mental", "emotion", "illusion", "dream", "fear"],
+  divine: ["divine", "healing", "vitality", "holy", "spirit", "religion", "sanctified"],
+  primal: ["primal", "nature", "healing", "animal", "plant", "wood", "fire", "water", "earth", "air"],
+  arcane: ["arcane", "evocation", "illusion", "transmutation", "abjuration", "spellheart"],
+  crafting: ["crafting", "tools", "formula", "snare", "gadget"],
+};
 
 const CLASS_PROFILES = {
-  alchemist: { roles: ["alchemical", "skill"], any: ["elixir", "bomb", "mutagen", "alchemical", "formula", "goggles", "tools", "healing"] },
-  animist: { roles: ["caster", "divine", "primal", "wisdom"], any: ["staff", "wand", "scroll", "healing", "spirit", "vitality", "divine", "primal", "religion", "nature"] },
-  barbarian: { roles: ["martial", "strength"], any: ["rune", "weapon", "striking", "potency", "boots", "belt", "bracers", "talisman", "healing"] },
-  bard: { roles: ["caster", "occult", "skill", "charisma"], any: ["staff", "wand", "scroll", "occult", "performance", "diplomacy", "deception", "mental", "sonic"] },
+  alchemist: { roles: ["alchemical", "skill", "crafting"], any: ["elixir", "bomb", "mutagen", "alchemical", "formula", "goggles", "tools", "healing"] },
+  animist: { roles: ["caster", "divine", "primal"], any: ["staff", "wand", "scroll", "healing", "spirit", "vitality", "divine", "primal", "religion", "nature"] },
+  barbarian: { roles: ["martial", "weapon"], any: ["rune", "weapon", "striking", "potency", "boots", "belt", "bracers", "talisman", "healing"] },
+  bard: { roles: ["caster", "occult", "skill"], any: ["staff", "wand", "scroll", "occult", "performance", "diplomacy", "deception", "mental", "sonic"] },
   champion: { roles: ["martial", "divine", "armor", "shield"], any: ["armor", "shield", "reinforcing", "resilient", "healing", "divine", "talisman", "rune"] },
-  cleric: { roles: ["caster", "divine", "wisdom"], any: ["staff", "wand", "scroll", "healing", "vitality", "divine", "religion", "holy"] },
-  druid: { roles: ["caster", "primal", "wisdom"], any: ["staff", "wand", "scroll", "primal", "nature", "healing", "animal", "plant", "wood"] },
+  cleric: { roles: ["caster", "divine"], any: ["staff", "wand", "scroll", "healing", "vitality", "divine", "religion", "holy"] },
+  druid: { roles: ["caster", "primal"], any: ["staff", "wand", "scroll", "primal", "nature", "healing", "animal", "plant", "wood"] },
   fighter: { roles: ["martial", "weapon", "armor", "shield"], any: ["rune", "weapon", "striking", "potency", "armor", "shield", "reinforcing", "talisman"] },
   gunslinger: { roles: ["martial", "ranged", "skill"], any: ["rune", "weapon", "ammunition", "scope", "goggles", "talisman", "stealth", "acrobatics"] },
   inventor: { roles: ["martial", "crafting", "skill"], any: ["rune", "weapon", "armor", "crafting", "tools", "goggles", "clockwork", "gadget"] },
   investigator: { roles: ["skill", "ranged"], any: ["perception", "society", "medicine", "thievery", "stealth", "goggles", "lens", "tools", "elixir"] },
-  kineticist: { roles: ["con", "impulse"], any: ["gate", "elemental", "fire", "water", "earth", "air", "wood", "metal", "healing", "talisman"] },
-  magus: { roles: ["martial", "caster", "arcane"], any: ["rune", "weapon", "striking", "wand", "scroll", "arcane", "spellheart", "talisman"] },
-  monk: { roles: ["martial", "unarmed", "mobility"], any: ["handwraps", "rune", "boots", "bracers", "belt", "acrobatic", "athletics", "talisman"] },
-  oracle: { roles: ["caster", "divine", "charisma"], any: ["staff", "wand", "scroll", "divine", "healing", "curse", "religion", "vitality"] },
-  psychic: { roles: ["caster", "occult", "charisma", "intelligence"], any: ["staff", "wand", "scroll", "occult", "mental", "illusion", "dream", "emotion", "deception"] },
-  ranger: { roles: ["martial", "primal", "survival"], any: ["rune", "weapon", "bow", "crossbow", "boots", "cloak", "survival", "nature", "primal"] },
-  rogue: { roles: ["martial", "skill", "dexterity"], any: ["rune", "weapon", "dagger", "shortsword", "thievery", "stealth", "deception", "boots", "cloak", "tools"] },
-  sorcerer: { roles: ["caster", "charisma"], any: ["staff", "wand", "scroll", "spellheart", "robe", "ring", "amulet", "arcane", "divine", "occult", "primal"] },
-  summoner: { roles: ["caster", "charisma", "eidolon"], any: ["staff", "wand", "scroll", "companion", "eidolon", "spellheart", "talisman"] },
-  swashbuckler: { roles: ["martial", "skill", "dexterity", "charisma"], any: ["rune", "weapon", "rapier", "buckler", "acrobatics", "athletics", "deception", "diplomacy", "talisman"] },
-  thaumaturge: { roles: ["martial", "esoterica", "charisma"], any: ["rune", "weapon", "esoterica", "occult", "religion", "talisman", "amulet", "implement"] },
+  kineticist: { roles: ["impulse"], any: ["gate", "elemental", "fire", "water", "earth", "air", "wood", "metal", "healing", "talisman"] },
+  magus: { roles: ["martial", "caster", "arcane", "weapon"], any: ["rune", "weapon", "striking", "wand", "scroll", "arcane", "spellheart", "talisman"] },
+  monk: { roles: ["martial", "weapon"], any: ["handwraps", "rune", "boots", "bracers", "belt", "acrobatic", "athletics", "talisman"] },
+  oracle: { roles: ["caster", "divine"], any: ["staff", "wand", "scroll", "divine", "healing", "curse", "religion", "vitality"] },
+  psychic: { roles: ["caster", "occult"], any: ["staff", "wand", "scroll", "occult", "mental", "illusion", "dream", "emotion", "deception"] },
+  ranger: { roles: ["martial", "ranged", "primal", "skill"], any: ["rune", "weapon", "bow", "crossbow", "boots", "cloak", "survival", "nature", "primal", "snare"] },
+  rogue: { roles: ["martial", "skill"], any: ["rune", "weapon", "dagger", "shortsword", "thievery", "stealth", "deception", "boots", "cloak", "tools", "poison"] },
+  sorcerer: { roles: ["caster"], any: ["staff", "wand", "scroll", "spellheart", "robe", "ring", "amulet", "arcane", "divine", "occult", "primal"] },
+  summoner: { roles: ["caster"], any: ["staff", "wand", "scroll", "eidolon", "spellheart", "talisman"] },
+  swashbuckler: { roles: ["martial", "skill", "weapon"], any: ["rune", "weapon", "rapier", "buckler", "acrobatics", "athletics", "deception", "diplomacy", "talisman"] },
+  thaumaturge: { roles: ["martial", "skill"], any: ["rune", "weapon", "esoterica", "occult", "religion", "talisman", "amulet", "implement", "scroll"] },
   witch: { roles: ["caster"], any: ["staff", "wand", "scroll", "familiar", "grimoire", "hex", "arcane", "divine", "occult", "primal"] },
-  wizard: { roles: ["caster", "arcane", "intelligence"], any: ["staff", "wand", "scroll", "arcane", "grimoire", "spellbook", "robe", "crown", "ring"] },
+  wizard: { roles: ["caster", "arcane"], any: ["staff", "wand", "scroll", "arcane", "grimoire", "spellbook", "robe", "crown", "ring"] },
 };
 
-const ROLE_KEYWORDS = {
-  martial: ["rune", "weapon", "striking", "potency", "armor", "shield", "talisman", "oil"],
-  caster: ["staff", "wand", "scroll", "spellheart", "grimoire", "robe", "ring", "focus"],
-  alchemical: ["alchemical", "elixir", "bomb", "mutagen", "antidote", "antiplague"],
-  shield: ["shield", "reinforcing", "buckler"],
-  armor: ["armor", "resilient", "fortification", "shadow", "slick"],
-  weapon: ["weapon", "rune", "striking", "potency", "property rune"],
-  skill: ["thievery", "stealth", "diplomacy", "deception", "intimidation", "medicine", "occultism", "arcana", "nature", "religion", "society", "survival", "athletics", "acrobatics", "performance", "crafting"],
-  occult: ["occult", "mental", "emotion", "illusion", "dream", "fear"],
-  divine: ["divine", "healing", "vitality", "holy", "spirit", "religion"],
-  primal: ["primal", "nature", "healing", "animal", "plant", "wood", "fire", "water", "earth", "air"],
-  arcane: ["arcane", "evocation", "illusion", "transmutation", "abjuration", "spellheart"],
-};
-
-const HYBRID_LOOT_STRATEGIES = [
-  { id: "general", weight: 70, label: "general useful" },
-  { id: "party", weight: 20, label: "party weighted" },
-  { id: "spotlight", weight: 10, label: "spotlight" },
-];
-
-const SPOTLIGHT_SCORE_MULTIPLIER = 1.75;
-const MAX_DUPLICATE_ROLE_WEIGHT = 3;
+const SCROLL_ITEM_LEVEL_BY_RANK = { 1: 1, 2: 3, 3: 5, 4: 7, 5: 9, 6: 11, 7: 13, 8: 15, 9: 17, 10: 19 };
+const SCROLL_PRICE_BY_RANK = { 1: 4, 2: 12, 3: 30, 4: 70, 5: 150, 6: 300, 7: 600, 8: 1300, 9: 3000, 10: 8000 };
 
 const cache = {
   ready: false,
   entries: [],
   docs: new Map(),
+  spellsReady: false,
+  spellEntries: [],
+  spellDocs: new Map(),
 };
 
 Hooks.once("init", () => {
@@ -128,54 +143,22 @@ Hooks.once("init", () => {
 
   registerCuratedSetting("curatedPartyFolder", {
     name: "Fallback session party actor folder",
-    hint: "Used only if the PF2e party actor, scene tokens, and player-owned characters do not resolve a session party. Default: Party.",
+    hint: "Fallback only. The PF2e party actor is checked first, then scene/player-owned actors, then this Actor folder.",
     type: String,
     default: "Party",
   });
 
   registerCuratedSetting("curatedSessionFraction", {
     name: "Session treasure fraction",
-    hint: "How much of the official full-level treasure plan to sample on a session treasure roll. Default 0.25 means roughly four rewarding sessions per level.",
+    hint: "Fraction of one level's treasure used by Session Treasure.",
     type: Number,
     default: 0.25,
     range: { min: 0.05, max: 1, step: 0.05 },
   });
 
-  registerCuratedSetting("curatedBudgetSlack", {
-    name: "Budget slack",
-    hint: "Soft over-budget allowance for curated item picks. 1.15 allows roughly 15% above the proportional Treasure by Level budget before candidates are rejected.",
-    type: Number,
-    default: 1.15,
-    range: { min: 1, max: 2, step: 0.05 },
-  });
-
-  registerCuratedSetting("curatedAboveTableChance", {
-    name: "Above-table permanent item chance",
-    hint: "Chance for a permanent item slot to roll one level above the normal Treasure by Level slot, capped at party level +2 and still budget-filtered.",
-    type: Number,
-    default: 0.15,
-    range: { min: 0, max: 0.5, step: 0.05 },
-  });
-
-  registerCuratedSetting("curatedUncommonWeight", {
-    name: "Uncommon item weight",
-    hint: "Weighted-pick multiplier for uncommon curated loot. Lower than 1 means uncommon items appear less often than common items while remaining possible.",
-    type: Number,
-    default: 0.45,
-    range: { min: 0, max: 1, step: 0.05 },
-  });
-
-  registerCuratedSetting("curatedRareWeight", {
-    name: "Rare item weight",
-    hint: "Weighted-pick multiplier for rare curated loot. Rare items are allowed, but should be much less common than uncommon items.",
-    type: Number,
-    default: 0.12,
-    range: { min: 0, max: 1, step: 0.01 },
-  });
-
   registerCuratedSetting("curatedPartyWeight", {
     name: "Party relevance weight",
-    hint: "Higher values make class/role matching dominate general-use item quality.",
+    hint: "Higher values make class/role matching dominate general item quality.",
     type: Number,
     default: 3,
     range: { min: 0, max: 10, step: 1 },
@@ -187,6 +170,45 @@ Hooks.once("init", () => {
     type: String,
     default: DEFAULT_JUNK_REGEX,
   });
+
+  registerCuratedSetting("curatedBudgetSlack", {
+    name: "Budget slack",
+    hint: "Soft budget multiplier. 1.15 allows generated item value plus currency to run about 15% over the approximate treasure budget.",
+    type: Number,
+    default: 1.15,
+    range: { min: 1, max: 2, step: 0.05 },
+  });
+
+  registerCuratedSetting("curatedAboveTableChance", {
+    name: "Above-table permanent chance",
+    hint: "Session/one-permanent rolls can occasionally shift a permanent item one level higher, capped at party level +2. Full-level generation stays table-accurate.",
+    type: Number,
+    default: 0.15,
+    range: { min: 0, max: 0.5, step: 0.01 },
+  });
+
+  registerCuratedSetting("curatedUncommonWeight", {
+    name: "Uncommon item weight",
+    hint: "Multiplier applied to uncommon items during weighted selection. Common is 1.0.",
+    type: Number,
+    default: 0.45,
+    range: { min: 0, max: 1, step: 0.01 },
+  });
+
+  registerCuratedSetting("curatedRareWeight", {
+    name: "Rare item weight",
+    hint: "Multiplier applied to rare items during weighted selection. Rare items are allowed, but should be much less common than uncommon.",
+    type: Number,
+    default: 0.12,
+    range: { min: 0, max: 1, step: 0.01 },
+  });
+
+  registerCuratedSetting("curatedSpecificScrolls", {
+    name: "Generate specific spell scrolls",
+    hint: "Replaces generic scroll items with a party-appropriate spell scroll when the PF2e spells compendium is available.",
+    type: Boolean,
+    default: true,
+  });
 });
 
 Hooks.once("ready", () => {
@@ -196,9 +218,10 @@ Hooks.once("ready", () => {
     rollOnePermanent: (actor) => generateCuratedLoot(actor, { mode: "one-permanent" }),
     getSessionParty,
     resolveSessionParty,
-    getPartyContext: partyContext,
+    partyContext,
     preload: preloadCuratedIndex,
     scoreEntry,
+    audienceForEntry,
   };
 });
 
@@ -207,30 +230,29 @@ Hooks.on("getActorSheetHeaderButtons", (app, buttons) => {
     if (!game.settings.get(MODULE, "curatedEnabled")) return;
     const actor = app?.actor;
     if (!isLootActor(actor)) return;
-    if (buttons.some(button => String(button.class ?? "").startsWith("pf2e-curated-"))) return;
 
-    // Use the normal Foundry sheet header only. Injecting body buttons into
-    // PF2e loot sheets creates oversized card-like buttons in some layouts.
-    buttons.unshift(
-      {
-        label: "Session Treasure",
-        class: "pf2e-curated-session-treasure",
-        icon: "fas fa-gem",
-        onclick: () => generateCuratedLoot(actor, { mode: "session" }),
-      },
-      {
-        label: "Curated Full Level",
-        class: "pf2e-curated-full-treasure",
-        icon: "fas fa-wand-magic-sparkles",
-        onclick: () => generateCuratedLoot(actor, { mode: "full-level" }),
-      },
-      {
-        label: "One Permanent",
-        class: "pf2e-curated-one-permanent",
-        icon: "fas fa-hat-wizard",
-        onclick: () => generateCuratedLoot(actor, { mode: "one-permanent" }),
-      },
-    );
+    const addOnce = (button) => {
+      if (!buttons.some(b => b.class === button.class)) buttons.unshift(button);
+    };
+
+    addOnce({
+      label: "One Relevant Permanent",
+      class: "pf2e-curated-one-permanent",
+      icon: "fas fa-hat-wizard",
+      onclick: () => generateCuratedLoot(actor, { mode: "one-permanent" }),
+    });
+    addOnce({
+      label: "Session Treasure",
+      class: "pf2e-curated-session-treasure",
+      icon: "fas fa-gem",
+      onclick: () => generateCuratedLoot(actor, { mode: "session" }),
+    });
+    addOnce({
+      label: "Curated Full Level",
+      class: "pf2e-curated-full-treasure",
+      icon: "fas fa-wand-magic-sparkles",
+      onclick: () => generateCuratedLoot(actor, { mode: "full-level" }),
+    });
   } catch (error) {
     console.warn(`${MODULE}: failed to add curated header buttons`, error);
   }
@@ -264,19 +286,40 @@ function toArray(value) {
   if (!value) return [];
   if (Array.isArray(value)) return value;
   if (value instanceof Set) return [...value];
+  if (value instanceof Map) return [...value.values()];
   if (typeof value === "object") return Object.values(value);
   return [value];
 }
 
+function counterAdd(counter, key, amount = 1) {
+  if (!key) return;
+  counter.set(key, (counter.get(key) ?? 0) + amount);
+}
+
+function counterHas(counter, key) {
+  return (counter.get(key) ?? 0) > 0;
+}
+
+function counterSummary(counter) {
+  return [...counter.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
 function traitList(entryOrItem) {
-  const traits = entryOrItem?.system?.traits;
+  const system = entryOrItem?.system ?? {};
+  const traits = system.traits ?? {};
   return [
-    ...toArray(traits?.value),
-    ...toArray(traits?.otherTags),
-    traits?.rarity,
-    entryOrItem?.system?.category,
-    entryOrItem?.system?.consumableType?.value,
-    entryOrItem?.system?.usage?.value,
+    ...toArray(traits.value),
+    ...toArray(traits.otherTags),
+    traits.rarity,
+    system.category,
+    system.category?.value,
+    system.consumableType?.value,
+    system.usage?.value,
+    system.group,
+    system.group?.value,
+    system.baseItem,
+    system.baseItem?.value,
+    system.preciousMaterial?.value,
   ].filter(Boolean).map(v => String(v).toLowerCase());
 }
 
@@ -305,56 +348,89 @@ function priceToGP(itemOrEntry) {
   return Number.isFinite(gp) ? Math.max(0, gp) : 0;
 }
 
-function getSessionParty() {
-  return resolveSessionParty().actors;
+function itemRarity(entryOrItem) {
+  const traits = entryOrItem?.system?.traits ?? {};
+  const fromField = traits.rarity ? String(traits.rarity).toLowerCase() : null;
+  if (fromField) return fromField;
+  const list = traitList(entryOrItem);
+  if (list.includes("unique")) return "unique";
+  if (list.includes("rare")) return "rare";
+  if (list.includes("uncommon")) return "uncommon";
+  return "common";
+}
+
+function rarityMultiplier(entry) {
+  const rarity = itemRarity(entry);
+  if (rarity === "unique") return 0;
+  if (rarity === "rare") return Math.max(0, Number(game.settings.get(MODULE, "curatedRareWeight")) || 0);
+  if (rarity === "uncommon") return Math.max(0, Number(game.settings.get(MODULE, "curatedUncommonWeight")) || 0);
+  return 1;
 }
 
 function resolveSessionParty() {
   const ignored = [];
-  const candidateSources = [
-    ["PF2e party actor", actorsFromPf2ePartyActor()],
-    ["active scene player-owned character tokens", actorsFromSceneTokens()],
-    ["player-owned character actors", actorsFromPlayerOwnedCharacters()],
-    ["fallback Actor folder", actorsFromFallbackPartyFolder()],
-  ];
+  const clean = (actors) => {
+    const seen = new Set();
+    const pcs = [];
+    for (const actor of actors.filter(Boolean)) {
+      if (seen.has(actor.uuid ?? actor.id)) continue;
+      seen.add(actor.uuid ?? actor.id);
+      const reason = nonPcReason(actor);
+      if (reason) ignored.push({ actor, reason });
+      else pcs.push(actor);
+    }
+    return pcs;
+  };
 
-  for (const [source, candidates] of candidateSources) {
-    const filtered = filterPartyCandidates(candidates);
-    ignored.push(...filtered.ignored.map(entry => ({ ...entry, source })));
-    if (filtered.actors.length) return { source, actors: filtered.actors, ignored };
+  const partyActor = game.actors?.party ?? game.actors?.find?.(a => a.type === "party");
+  const partyMembers = getPartyActorMembers(partyActor);
+  let actors = clean(partyMembers);
+  if (actors.length) return { source: "PF2e party actor", actors, ignored };
+
+  if (globalThis.canvas?.ready) {
+    actors = clean(canvas.tokens.placeables.map(t => t.actor).filter(a => a?.hasPlayerOwner));
+    if (actors.length) return { source: "active scene player-owned tokens", actors, ignored };
   }
 
-  return { source: "no party found", actors: [], ignored };
+  actors = clean(game.actors.filter(a => a?.type === "character" && a.hasPlayerOwner));
+  if (actors.length) return { source: "player-owned character actors", actors, ignored };
+
+  const folderActors = getFallbackFolderActors();
+  actors = clean(folderActors);
+  if (actors.length) return { source: "fallback Party actor folder", actors, ignored };
+
+  return { source: "fallback default", actors: [], ignored };
 }
 
-function actorsFromPf2ePartyActor() {
-  const partyActor = game.actors?.party ?? game.actors?.find?.(a => a?.type === "party");
+function getSessionParty() {
+  return resolveSessionParty().actors;
+}
+
+function getPartyActorMembers(partyActor) {
   if (!partyActor) return [];
-
-  const members = partyActor.members ?? partyActor.system?.members ?? partyActor.system?.details?.members ?? [];
-  const CollectionClass = foundry?.utils?.Collection;
-  const isCollection = typeof CollectionClass === "function" && members instanceof CollectionClass;
-  const memberArray = isCollection ? Array.from(members.values()) : toArray(members);
-  return memberArray.map(member => member?.actor ?? member).filter(Boolean);
+  const members = [];
+  for (const value of toArray(partyActor.members)) members.push(value?.actor ?? value);
+  const memberIds = toArray(partyActor.system?.details?.members).map(m => m?.uuid ?? m?.id ?? m).filter(Boolean);
+  for (const id of memberIds) {
+    const actor = game.actors.get(id) ?? fromUuidSyncSafe(id);
+    if (actor) members.push(actor);
+  }
+  return members;
 }
 
-function actorsFromSceneTokens() {
-  if (!canvas?.ready) return [];
-  return canvas.tokens.placeables
-    .map(token => token.actor)
-    .filter(actor => actor?.hasPlayerOwner);
+function fromUuidSyncSafe(uuid) {
+  try {
+    return typeof fromUuidSync === "function" ? fromUuidSync(uuid) : null;
+  } catch (_error) {
+    return null;
+  }
 }
 
-function actorsFromPlayerOwnedCharacters() {
-  return game.actors.filter(actor => actor?.type === "character" && actor?.hasPlayerOwner);
-}
-
-function actorsFromFallbackPartyFolder() {
+function getFallbackFolderActors() {
   const folderName = game.settings.get(MODULE, "curatedPartyFolder") || "Party";
   const folders = Array.from(game.folders ?? []);
-  const root = folders.find(folder => folder?.type === "Actor" && folder.name === folderName);
+  const root = folders.find(f => f?.type === "Actor" && f.name === folderName);
   if (!root) return [];
-
   const folderIds = new Set([root.id]);
   let changed = true;
   while (changed) {
@@ -367,138 +443,23 @@ function actorsFromFallbackPartyFolder() {
       }
     }
   }
-
-  return game.actors.filter(actor => folderIds.has(actor.folder?.id));
+  return game.actors.filter(a => folderIds.has(a.folder?.id));
 }
 
-function filterPartyCandidates(candidates) {
-  const actors = [];
-  const ignored = [];
-  const seen = new Set();
-
-  for (const actor of candidates ?? []) {
-    if (!actor || seen.has(actor.id)) continue;
-    seen.add(actor.id);
-    const reason = partyExclusionReason(actor);
-    if (reason) ignored.push({ actor, reason });
-    else actors.push(actor);
-  }
-
-  return { actors, ignored };
-}
-
-function partyExclusionReason(actor) {
+function nonPcReason(actor) {
   if (!actor) return "missing actor";
   if (actor.type === "familiar") return "actor type familiar";
-  if (String(actor.type ?? "").toLowerCase().includes("companion")) return `actor type ${actor.type}`;
-  if (actor.type !== "character") return `actor type ${actor.type}`;
-
+  if (["animal-companion", "companion", "eidolon"].includes(actor.type)) return `actor type ${actor.type}`;
   const master = actor.system?.master;
-  if (master?.id || master?.uuid || master?.actor) return "has a master actor";
-
+  if (master?.id || master?.uuid || master?.actor) return "has PF2e master link";
   const classSlug = actorClassSlug(actor);
   const hasClassItem = Boolean(classSlug);
   const creatureValue = actor.system?.details?.creature?.value;
-  const hasCompanionAbility = Array.from(actor.items ?? []).some(item => {
-    const category = String(item?.system?.category ?? "").toLowerCase();
-    const source = String(item?._stats?.compendiumSource ?? "").toLowerCase();
-    return category === "familiar" || category === "animal-companion" ||
-      source.includes("familiar-abilities") || source.includes("animal-companion") ||
-      source.includes("animal-companions");
-  });
-
-  if (hasCompanionAbility) return "familiar/companion ability set";
-  if (!hasClassItem && creatureValue) return "creature-style character actor without a class";
-
+  if (actor.type !== "character") return `actor type ${actor.type}`;
+  if (!hasClassItem && creatureValue) return "classless creature-like character actor";
+  const itemBlobs = Array.from(actor.items ?? []).map(i => `${i.type} ${i.name ?? ""} ${i.system?.category ?? ""} ${i.system?.category?.value ?? ""} ${i.system?.slug ?? ""}`.toLowerCase()).join(" ");
+  if (!hasClassItem && /familiar|animal companion|companion/.test(itemBlobs)) return "classless familiar/companion abilities";
   return null;
-}
-
-function partyContext() {
-  const party = resolveSessionParty();
-  const actors = party.actors;
-  const levels = actors.map(a => Number(a.system?.details?.level?.value ?? 1)).filter(n => Number.isFinite(n) && n > 0);
-  const level = clampLevel(levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 1);
-  const actorProfiles = actors.map(buildActorProfile).filter(Boolean);
-  const classCounts = new Map();
-  const roleCounts = new Map();
-  const keywordCounts = new Map();
-  const traditionCounts = new Map();
-
-  for (const profile of actorProfiles) {
-    if (profile.classSlug) incrementCounter(classCounts, profile.classSlug, 1);
-    mergeCounter(roleCounts, profile.roles);
-    mergeCounter(keywordCounts, profile.keywords);
-    mergeCounter(traditionCounts, profile.traditions);
-  }
-
-  return {
-    actors,
-    ignored: party.ignored,
-    partySource: party.source,
-    level,
-    partySize: actors.length || 4,
-    classes: [...classCounts.keys()],
-    classCounts,
-    actorProfiles,
-    roleCounts,
-    keywordCounts,
-    traditionCounts,
-    // Backwards-compatible aliases for API/debug consumers.
-    roles: roleCounts,
-    keywords: keywordCounts,
-    traditions: traditionCounts,
-  };
-}
-
-function buildActorProfile(actor) {
-  if (!actor) return null;
-  const classSlug = actorClassSlug(actor);
-  const roles = new Map();
-  const keywords = new Map();
-  const traditions = new Map();
-
-  addClassProfileToCounters(classSlug, roles, keywords);
-
-  for (const item of actor.items ?? []) {
-    const type = item?.type;
-    const slug = slugify(item?.slug ?? item?.name);
-    if (type === "spellcastingEntry") {
-      const tradition = item.system?.tradition?.value;
-      if (tradition) {
-        const key = String(tradition).toLowerCase();
-        incrementCounter(traditions, key, 1);
-        incrementCounter(roles, key, 1);
-      }
-    }
-    if (type === "class" && slug !== classSlug && CLASS_PROFILES[slug]) addClassProfileToCounters(slug, roles, keywords);
-  }
-
-  return { actor, classSlug, roles, keywords, traditions };
-}
-
-function addClassProfileToCounters(classSlug, roleCounts, keywordCounts) {
-  const profile = CLASS_PROFILES[classSlug];
-  if (!profile) return;
-  for (const role of profile.roles ?? []) incrementCounter(roleCounts, role, 1);
-  for (const word of profile.any ?? []) incrementCounter(keywordCounts, word, 1);
-}
-
-function incrementCounter(counter, key, amount = 1) {
-  const normalized = String(key ?? "").toLowerCase();
-  if (!normalized) return;
-  counter.set(normalized, (counter.get(normalized) ?? 0) + amount);
-}
-
-function mergeCounter(target, source, multiplier = 1) {
-  for (const [key, value] of source ?? []) incrementCounter(target, key, value * multiplier);
-}
-
-function counterHas(counter, key) {
-  return Number(counter?.get?.(key) ?? 0) > 0;
-}
-
-function duplicateWeight(count) {
-  return Math.min(MAX_DUPLICATE_ROLE_WEIGHT, Math.max(0, Number(count) || 0));
 }
 
 function actorClassSlug(actor) {
@@ -506,45 +467,71 @@ function actorClassSlug(actor) {
   return slugify(classItem?.slug ?? classItem?.name ?? actor?.class?.slug ?? actor?.system?.details?.class?.value);
 }
 
-function treasureTotalBudget(ctx, fraction = 1) {
-  const baseTotal = TOTAL_VALUE_BY_LEVEL[ctx.level] ?? TOTAL_VALUE_BY_LEVEL[1];
-  const extraPcs = Math.max(0, ctx.partySize - 4);
-  // The official additional-PC guidance adds item slots plus currency. A quarter
-  // of the four-PC total is a practical soft value for each extra PC's share.
-  return Math.floor((baseTotal + extraPcs * (baseTotal / 4)) * fraction);
-}
+function partyContext() {
+  const resolution = resolveSessionParty();
+  const actors = resolution.actors;
+  const levels = actors.map(a => Number(a.system?.details?.level?.value ?? 1)).filter(n => Number.isFinite(n) && n > 0);
+  const level = clampLevel(levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 1);
+  const classes = [];
+  const classCounts = new Map();
+  const roles = new Map();
+  const keywords = new Map();
+  const traditions = new Map();
+  const actorProfiles = [];
 
-function stochasticCount(value, { min = 0 } = {}) {
-  const whole = Math.floor(value);
-  const fractional = value - whole;
-  return Math.max(min, whole + (Math.random() < fractional ? 1 : 0));
-}
+  for (const actor of actors) {
+    const cls = actorClassSlug(actor);
+    if (cls) {
+      classes.push(cls);
+      counterAdd(classCounts, cls);
+      applyClassProfile(cls, roles, keywords, 1);
+    }
 
-function maybeAboveTablePermanentLevel(level, ctx) {
-  const chance = Math.max(0, Math.min(0.5, Number(game.settings.get(MODULE, "curatedAboveTableChance")) || 0));
-  if (chance <= 0 || Math.random() >= chance) return level;
-  return Math.min(20, ctx.level + 2, level + 1);
-}
+    for (const item of actor.items ?? []) {
+      if (item?.type === "spellcastingEntry") {
+        const tradition = item.system?.tradition?.value;
+        if (tradition) {
+          const slug = String(tradition).toLowerCase();
+          counterAdd(traditions, slug);
+          counterAdd(roles, slug);
+          counterAdd(roles, "caster");
+        }
+      }
+    }
 
-function expandSlots(obj) {
-  const slots = [];
-  for (const [level, count] of Object.entries(obj ?? {})) {
-    for (let i = 0; i < (Number(count) || 0); i++) slots.push(Number(level));
+    actorProfiles.push({ actor, classSlug: cls, profile: CLASS_PROFILES[cls] ?? null, traditions: actorTraditions(actor) });
   }
-  return slots;
+
+  return {
+    resolution,
+    actors,
+    level,
+    partySize: actors.length || 4,
+    classes,
+    classCounts,
+    roles,
+    keywords,
+    traditions,
+    actorProfiles,
+  };
 }
 
-function collapseSlots(levels) {
-  const counts = new Map();
-  for (const level of levels) counts.set(level, (counts.get(level) ?? 0) + 1);
-  return [...counts.entries()].map(([level, count]) => ({ level, count }));
+function applyClassProfile(classSlug, roles, keywords, amount = 1) {
+  const profile = CLASS_PROFILES[classSlug];
+  if (!profile) return;
+  for (const role of profile.roles ?? []) counterAdd(roles, role, amount);
+  for (const word of profile.any ?? []) counterAdd(keywords, word, amount);
 }
 
-function sampleSlots(levels, fraction, { minimum = 0 } = {}) {
-  if (!levels.length) return [];
-  const shuffled = [...levels].sort(() => Math.random() - 0.5);
-  const wanted = stochasticCount(levels.length * fraction, { min: minimum });
-  return shuffled.slice(0, Math.min(levels.length, wanted));
+function actorTraditions(actor) {
+  const traditions = new Set();
+  for (const item of actor.items ?? []) {
+    if (item?.type === "spellcastingEntry") {
+      const tradition = item.system?.tradition?.value;
+      if (tradition) traditions.add(String(tradition).toLowerCase());
+    }
+  }
+  return traditions;
 }
 
 function selectionPlan(ctx, mode) {
@@ -553,61 +540,108 @@ function selectionPlan(ctx, mode) {
   const fraction = Math.max(0.05, Math.min(1, Number(game.settings.get(MODULE, "curatedSessionFraction")) || 0.25));
 
   if (mode === "one-permanent") {
-    const level = maybeAboveTablePermanentLevel(Math.min(20, ctx.level + 1), ctx);
+    const bumped = Math.random() < (Number(game.settings.get(MODULE, "curatedAboveTableChance")) || 0);
     return {
-      permanent: [{ level, count: 1 }],
+      permanent: [{ targetLevel: Math.min(20, ctx.level + (bumped ? 2 : 1)), count: 1, source: bumped ? "spotlight above-table" : "spotlight" }],
       consumable: [],
       currency: 0,
-      softBudget: treasureTotalBudget(ctx, fraction),
-      budgetFraction: fraction,
+      budget: estimatePlanBudget(ctx.level, [{ targetLevel: Math.min(20, ctx.level + (bumped ? 2 : 1)), count: 1 }], [], 0),
+      exactLevels: false,
     };
-  }
-
-  const permanentLevels = expandSlots(spec.permanent);
-  const consumableLevels = expandSlots(spec.consumable);
-  for (let i = 0; i < extraPcs; i++) {
-    permanentLevels.push(Math.min(20, ctx.level + (Math.random() < 0.5 ? 1 : 0)));
-    consumableLevels.push(Math.min(20, ctx.level + 1), ctx.level);
   }
 
   if (mode === "full-level") {
+    const permanent = objectSlots(spec.permanent).map(s => ({ ...s, source: "table" }));
+    const consumable = objectSlots(spec.consumable).map(s => ({ ...s, source: "table" }));
+    for (let i = 0; i < extraPcs; i++) {
+      permanent.push({ targetLevel: Math.min(20, ctx.level + (Math.random() < 0.5 ? 1 : 0)), count: 1, source: "extra PC" });
+      consumable.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1, source: "extra PC" }, { targetLevel: ctx.level, count: 1, source: "extra PC" });
+    }
     return {
-      permanent: collapseSlots(permanentLevels.map(level => maybeAboveTablePermanentLevel(level, ctx))),
-      consumable: collapseSlots(consumableLevels),
+      permanent,
+      consumable,
       currency: spec.currency + (extraPcs * spec.extraPc),
-      softBudget: treasureTotalBudget(ctx, 1),
-      budgetFraction: 1,
+      budget: spec.total + estimatePlanBudget(ctx.level, permanent.filter(s => s.source === "extra PC"), consumable.filter(s => s.source === "extra PC"), extraPcs * spec.extraPc),
+      exactLevels: true,
     };
   }
 
-  // Session mode samples a proportional slice of the full-level item slots.
-  // This preserves PF2e's item/currency shape, but lets a 5-PC party naturally
-  // roll a second permanent item about 25% of the time at the default 0.25 slice.
-  const sampledPermanent = sampleSlots(permanentLevels, fraction, { minimum: 1 })
-    .map(level => maybeAboveTablePermanentLevel(level, ctx));
-  const sampledConsumable = sampleSlots(consumableLevels, fraction, { minimum: 2 });
+  const fullPermanent = objectSlots(spec.permanent);
+  const fullConsumable = objectSlots(spec.consumable);
+  for (let i = 0; i < extraPcs; i++) {
+    fullPermanent.push({ targetLevel: Math.min(20, ctx.level + (Math.random() < 0.5 ? 1 : 0)), count: 1 });
+    fullConsumable.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1 }, { targetLevel: ctx.level, count: 1 });
+  }
 
+  const permanent = fractionalSlots(fullPermanent, fraction).map(s => ({ ...s, source: "session slice" }));
+  const consumable = fractionalSlots(fullConsumable, fraction).map(s => ({ ...s, source: "session slice" }));
+
+  if (!permanent.length) permanent.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1, source: "session minimum" });
+  if (Math.random() < (Number(game.settings.get(MODULE, "curatedAboveTableChance")) || 0)) {
+    const slot = permanent[Math.floor(Math.random() * permanent.length)];
+    slot.targetLevel = Math.min(20, ctx.level + 2, slot.targetLevel + 1);
+    slot.source = `${slot.source}; above-table`;
+  }
+  if (!consumable.length) consumable.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1, source: "session minimum" });
+
+  const currency = Math.floor((spec.currency + extraPcs * spec.extraPc) * fraction);
   return {
-    permanent: collapseSlots(sampledPermanent),
-    consumable: collapseSlots(sampledConsumable),
-    currency: Math.floor((spec.currency + extraPcs * spec.extraPc) * fraction),
-    softBudget: treasureTotalBudget(ctx, fraction),
-    budgetFraction: fraction,
+    permanent,
+    consumable,
+    currency,
+    budget: Math.floor((spec.total + estimatePlanBudget(ctx.level, fullPermanent.slice(4), fullConsumable.slice(6), extraPcs * spec.extraPc)) * fraction),
+    exactLevels: false,
   };
 }
 
 function objectSlots(obj) {
-  return Object.entries(obj ?? {}).map(([level, count]) => ({ level: Number(level), count: Number(count) || 0 }));
+  return Object.entries(obj ?? {}).map(([targetLevel, count]) => ({ targetLevel: Number(targetLevel), count: Number(count) || 0 }));
+}
+
+function fractionalSlots(slots, fraction) {
+  const out = [];
+  for (const slot of slots) {
+    const expected = Math.max(0, (Number(slot.count) || 0) * fraction);
+    const whole = Math.floor(expected);
+    const extra = Math.random() < (expected - whole) ? 1 : 0;
+    const count = whole + extra;
+    if (count > 0) out.push({ targetLevel: slot.targetLevel, count });
+  }
+  return out;
+}
+
+function estimatePlanBudget(partyLevel, permanentSlots, consumableSlots, currency) {
+  let total = Number(currency) || 0;
+  for (const slot of permanentSlots ?? []) total += itemValueEstimate(slot.targetLevel) * (slot.count || 1);
+  for (const slot of consumableSlots ?? []) total += consumableValueEstimate(slot.targetLevel) * (slot.count || 1);
+  return Math.max(0, Math.round(total));
+}
+
+function itemValueEstimate(level) {
+  const table = {
+    1: 15, 2: 35, 3: 60, 4: 100, 5: 160, 6: 250, 7: 360, 8: 500, 9: 700, 10: 1000,
+    11: 1400, 12: 2000, 13: 3000, 14: 4500, 15: 6500, 16: 10000, 17: 15000, 18: 24000, 19: 40000, 20: 70000,
+  };
+  return table[clampLevel(level)] ?? 15;
+}
+
+function consumableValueEstimate(level) {
+  const table = {
+    1: 4, 2: 7, 3: 12, 4: 20, 5: 30, 6: 45, 7: 70, 8: 95, 9: 150, 10: 200,
+    11: 300, 12: 400, 13: 600, 14: 900, 15: 1300, 16: 2000, 17: 3000, 18: 4500, 19: 8000, 20: 12000,
+  };
+  return table[clampLevel(level)] ?? 4;
 }
 
 async function preloadCuratedIndex() {
   if (cache.ready) return cache.entries;
-  const packSetting = game.settings.get(MODULE, "pack-equipment") || "pf2e.equipment-srd";
+  const packSetting = game.settings.get(MODULE, "pack-equipment") || game.settings.get(MODULE, "packEquipment") || "pf2e.equipment-srd";
   const packIds = String(packSetting).split(",").map(s => s.trim()).filter(Boolean);
   const fields = [
     "type", "name", "system.level.value", "system.price.value", "system.price.per",
-    "system.traits", "system.category", "system.consumableType.value", "system.usage.value",
-    "system.slug", "img"
+    "system.traits", "system.category", "system.category.value", "system.consumableType.value",
+    "system.usage.value", "system.slug", "system.group", "system.group.value", "system.baseItem",
+    "system.baseItem.value", "system.preciousMaterial.value", "img"
   ];
 
   const entries = [];
@@ -625,12 +659,40 @@ async function preloadCuratedIndex() {
   return entries;
 }
 
+async function preloadSpellIndex() {
+  if (cache.spellsReady) return cache.spellEntries;
+  const packIds = ["pf2e.spells-srd"];
+  const fields = [
+    "type", "name", "system.level.value", "system.traits", "system.traditions.value",
+    "system.category.value", "system.slug", "system.time.value", "img"
+  ];
+  const entries = [];
+  for (const packId of packIds) {
+    const pack = game.packs.get(packId);
+    if (!pack) continue;
+    const index = await pack.getIndex({ fields });
+    for (const entry of index) entries.push({ ...entry, __pack: packId });
+  }
+  cache.spellEntries = entries;
+  cache.spellsReady = true;
+  return entries;
+}
+
 async function getDoc(entry) {
   const key = `${entry.__pack}:${entry._id}`;
   if (cache.docs.has(key)) return cache.docs.get(key);
   const pack = game.packs.get(entry.__pack);
   const doc = await pack?.getDocument(entry._id);
   if (doc) cache.docs.set(key, doc);
+  return doc;
+}
+
+async function getSpellDoc(entry) {
+  const key = `${entry.__pack}:${entry._id}`;
+  if (cache.spellDocs.has(key)) return cache.spellDocs.get(key);
+  const pack = game.packs.get(entry.__pack);
+  const doc = await pack?.getDocument(entry._id);
+  if (doc) cache.spellDocs.set(key, doc);
   return doc;
 }
 
@@ -645,76 +707,146 @@ function isJunk(entry) {
   }
 }
 
-function rarityWeightMultiplier(entry) {
-  const traits = traitList(entry);
-  if (traits.includes("unique")) return 0;
-  if (traits.includes("rare")) return Math.max(0, Number(game.settings.get(MODULE, "curatedRareWeight")) || 0);
-  if (traits.includes("uncommon")) return Math.max(0, Number(game.settings.get(MODULE, "curatedUncommonWeight")) || 0);
-  return 1;
+function hardBlockReason(entry) {
+  if (!entry) return "missing entry";
+  const blob = textBlob(entry);
+  if (isJunk(entry)) return "junk/trade-good name";
+  if (itemRarity(entry) === "unique") return "unique item";
+  if (new RegExp(STORY_OR_NO_RANDOM_REGEX, "i").test(entry?.name ?? "")) return "story/quest-like item name";
+  if (/(?:^|\s)(vehicle|siege|structure)(?:\s|$)/i.test(blob)) return "vehicle/siege/structure item";
+  if (priceToGP(entry) <= 0) return "0 gp or no price";
+  return null;
 }
 
-function isQuestLikeOrBlockedRarity(entry) {
+function audienceForEntry(entry, kind = null) {
   const traits = traitList(entry);
-  if (traits.includes("unique")) return true;
-
   const blob = textBlob(entry);
-  if (/\b(contract|pact|boon|curse|cursed|artifact|relic|story|quest)\b/.test(blob)) return true;
+  const roles = new Set();
+  const keywords = new Set();
+  const reasons = [];
+  const blockReason = hardBlockReason(entry);
+  const isConsumable = entry?.type === "consumable";
+  const isPermanent = ["equipment", "weapon", "armor", "shield"].includes(entry?.type);
+  let general = false;
 
+  if (kind === "consumable" && !isConsumable) return { general: false, roles, keywords, reasons, blockReason: "not a consumable" };
+  if (kind === "permanent" && !isPermanent) return { general: false, roles, keywords, reasons, blockReason: "not permanent equipment" };
+  if (!isConsumable && !isPermanent) return { general: false, roles, keywords, reasons, blockReason: "unsupported item type" };
+  if (blockReason) return { general: false, roles, keywords, reasons, blockReason };
+
+  const addRole = (role, reason) => { roles.add(role); if (reason) reasons.push(reason); };
+  const addKeyword = (word) => keywords.add(word);
+
+  if (isPermanent) {
+    if (entry.type === "weapon") { addRole("martial", "weapon"); addRole("weapon"); }
+    if (entry.type === "armor") { addRole("armor", "armor"); addRole("martial"); }
+    if (entry.type === "shield") { addRole("shield", "shield"); addRole("martial"); }
+
+    if (GENERAL_PERMANENT_KEYWORDS.some(w => blob.includes(w))) { general = true; reasons.push("broad worn/utility permanent"); }
+    if (CASTER_PERMANENT_KEYWORDS.some(w => blob.includes(w))) addRole("caster", "caster-only permanent");
+    if (MARTIAL_PERMANENT_KEYWORDS.some(w => blob.includes(w))) addRole("martial", "martial permanent");
+    if (/thrower|throwing|bandolier|ammunition|arrow|bolt|bow|crossbow/.test(blob)) { addRole("ranged", "ranged/thrown permanent"); addRole("martial"); }
+    for (const tradition of ["arcane", "divine", "occult", "primal"]) {
+      if (traits.includes(tradition) || blob.includes(tradition)) addRole(tradition, `${tradition} item`);
+    }
+    if (traits.includes("invested") && !roles.size) general = true;
+  }
+
+  if (isConsumable) {
+    const ctype = String(entry.system?.consumableType?.value ?? "").toLowerCase();
+    if (GENERAL_CONSUMABLE_KEYWORDS.some(w => blob.includes(w)) || ["potion", "elixir"].includes(ctype)) {
+      general = true;
+      reasons.push("broad potion/elixir/remedy");
+    }
+    if (ctype === "scroll" || traits.includes("scroll") || /scroll of a .*rank spell/i.test(entry.name ?? "")) addRole("caster", "scroll");
+    if (ctype === "catalyst" || traits.includes("catalyst") || blob.includes("catalyst")) addRole("caster", "spell catalyst");
+    if (CASTER_CONSUMABLE_KEYWORDS.some(w => blob.includes(w)) && (blob.includes("catalyst") || blob.includes("scroll"))) addRole("caster", "caster consumable");
+    if (traits.includes("fulu") || ctype === "fulu") addRole("caster", "fulu/magical script");
+    if (ctype === "talisman" || traits.includes("talisman") || blob.includes("talisman")) { general = true; addRole("martial", "talisman"); addRole("skill", "talisman"); }
+    if (ctype === "oil" || traits.includes("oil") || blob.includes("oil")) addRole("martial", "oil");
+    if (ctype === "ammo" || traits.includes("ammunition") || /ammunition|arrow|bolt/.test(blob)) addRole("ranged", "ammunition");
+    if (ctype === "bomb" || traits.includes("bomb") || blob.includes("bomb")) { addRole("alchemical", "bomb"); addRole("martial", "bomb"); }
+    if (ctype === "mutagen" || traits.includes("mutagen") || blob.includes("mutagen")) { addRole("alchemical", "mutagen"); addRole("martial", "mutagen"); general = false; }
+    if (ctype === "poison" || traits.includes("poison") || blob.includes("poison")) { addRole("alchemical", "poison"); addKeyword("poison"); general = false; }
+    if (ctype === "drug" || traits.includes("drug") || blob.includes("drug")) { addRole("alchemical", "drug"); general = false; }
+    if (ctype === "snare" || traits.includes("snare") || blob.includes("snare")) { addRole("crafting", "snare"); general = false; }
+    for (const tradition of ["arcane", "divine", "occult", "primal"]) {
+      if (traits.includes(tradition) || blob.includes(tradition)) addRole(tradition, `${tradition} consumable`);
+    }
+  }
+
+  for (const word of [...GENERAL_PERMANENT_KEYWORDS, ...CASTER_PERMANENT_KEYWORDS, ...MARTIAL_PERMANENT_KEYWORDS, ...GENERAL_CONSUMABLE_KEYWORDS, ...CASTER_CONSUMABLE_KEYWORDS, ...MARTIAL_CONSUMABLE_KEYWORDS, ...ALCHEMICAL_CONSUMABLE_KEYWORDS]) {
+    if (blob.includes(word)) addKeyword(word);
+  }
+
+  if (roles.has("caster") || roles.has("alchemical") || roles.has("martial") || roles.has("ranged") || roles.has("crafting")) {
+    // Narrow audience items should not be labeled or selected as general.
+    if (roles.has("caster") || roles.has("alchemical") || roles.has("ranged") || roles.has("crafting")) general = false;
+  }
+
+  return { general, roles, keywords, reasons, blockReason: null };
+}
+
+function audienceMatchesParty(audience, ctx) {
+  if (audience.general) return true;
+  if (audience.roles.has("caster") && counterHas(ctx.roles, "caster")) return true;
+  for (const role of audience.roles) if (counterHas(ctx.roles, role)) return true;
+  for (const word of audience.keywords) if (counterHas(ctx.keywords, word)) return true;
   return false;
 }
 
-function isZeroValueOrQuestLike(entry) {
-  // PF2e equipment compendia contain campaign/quest objects, boons, contracts,
-  // and other non-purchasable records. These often have no listed price or 0 gp
-  // and are bad random-chest rewards even when their item type is "equipment."
-  if (priceToGP(entry) <= 0) return true;
-  return isQuestLikeOrBlockedRarity(entry);
+function audienceMatchesActor(audience, actorProfile, ctx) {
+  if (audience.general) return true;
+  if (!actorProfile) return audienceMatchesParty(audience, ctx);
+  const localRoles = new Map();
+  const localKeywords = new Map();
+  if (actorProfile.classSlug) applyClassProfile(actorProfile.classSlug, localRoles, localKeywords, 1);
+  for (const t of actorProfile.traditions ?? []) counterAdd(localRoles, t);
+  if ((audience.roles.has("caster") || [...audience.roles].some(r => ["arcane", "divine", "occult", "primal"].includes(r))) && !counterHas(localRoles, "caster")) return false;
+  for (const role of audience.roles) if (counterHas(localRoles, role)) return true;
+  for (const word of audience.keywords) if (counterHas(localKeywords, word)) return true;
+  return false;
 }
 
-function isUsefulPermanent(entry) {
-  if (!["equipment", "weapon", "armor", "shield"].includes(entry?.type)) return false;
-  if (isJunk(entry) || isZeroValueOrQuestLike(entry)) return false;
-  const blob = textBlob(entry);
-  const traits = traitList(entry);
-  const magical = ["magical", "invested", "arcane", "divine", "occult", "primal", "focused", "rune"].some(t => traits.includes(t));
-  const usefulName = COMMON_PERMANENT_KEYWORDS.some(word => blob.includes(word));
-  const mundaneWeaponOrArmor = ["weapon", "armor", "shield"].includes(entry.type) && !magical && !blob.includes("rune");
-  return (magical || usefulName) && !mundaneWeaponOrArmor;
+function isUsefulEntry(entry, ctx, kind, lane, spotlight) {
+  const audience = audienceForEntry(entry, kind);
+  if (audience.blockReason) return false;
+  if (lane === "general") return audience.general;
+  if (lane === "spotlight") return audienceMatchesActor(audience, spotlight, ctx);
+  return audienceMatchesParty(audience, ctx);
 }
 
-function isUsefulConsumable(entry, ctx) {
-  if (entry?.type !== "consumable") return false;
-  if (isJunk(entry) || isZeroValueOrQuestLike(entry)) return false;
-  const blob = textBlob(entry);
-  const traits = traitList(entry);
-  const hasUsefulTrait = ["potion", "elixir", "scroll", "oil", "talisman", "fulu", "mutagen", "bomb", "catalyst", "magical", "alchemical"].some(t => traits.includes(t));
-  const usefulName = COMMON_CONSUMABLE_KEYWORDS.some(word => blob.includes(word));
-  const isPoison = traits.includes("poison") || blob.includes("poison");
-  const hasPoisonUser = counterHas(ctx.roleCounts, "alchemical") || ctx.classes.includes("rogue") || ctx.classes.includes("alchemist");
-  if (isPoison && !hasPoisonUser) return false;
-  return hasUsefulTrait || usefulName;
+function chooseLane(mode, kind, ctx) {
+  if (mode === "one-permanent") return { type: "spotlight", spotlight: randomSpotlight(ctx) };
+  const roll = Math.random();
+  if (roll < 0.70) return { type: "general", spotlight: null };
+  if (roll < 0.90) return { type: "party", spotlight: null };
+  return { type: "spotlight", spotlight: randomSpotlight(ctx) };
 }
 
-function scoreEntry(entry, ctx, kind, targetLevel, strategy = { id: "party", label: "party weighted" }) {
+function randomSpotlight(ctx) {
+  const profiles = ctx.actorProfiles.filter(p => p.actor && p.classSlug);
+  if (!profiles.length) return null;
+  return profiles[Math.floor(Math.random() * profiles.length)];
+}
+
+function scoreEntry(entry, ctx, kind, targetLevel, lane = "party", spotlight = null) {
   const blob = textBlob(entry);
   const traits = traitList(entry);
+  const audience = audienceForEntry(entry, kind);
+  if (audience.blockReason) return 0;
   let score = 1;
 
-  // Level proximity: prefer exact level, tolerate near misses if the exact pool is thin.
-  const levelDistance = Math.abs(entryLevel(entry) - targetLevel);
-  score += Math.max(0, 6 - levelDistance * 2);
+  const distance = Math.abs(entryLevel(entry) - targetLevel);
+  score += Math.max(0, 10 - distance * 4);
+  if (entryLevel(entry) > targetLevel) score -= 2 * (entryLevel(entry) - targetLevel);
 
-  const keywordList = kind === "permanent" ? COMMON_PERMANENT_KEYWORDS : COMMON_CONSUMABLE_KEYWORDS;
-  for (const word of keywordList) if (blob.includes(word)) score += 2;
-
-  // Rarity should influence probability, not act as a hard ban.
-  // Common remains the default. Uncommon and rare stay possible but are
-  // increasingly down-weighted by rarityWeightMultiplier() at the end.
-  if (traits.includes("common")) score += 1;
-  if (traits.includes("uncommon")) score += 0;
-  if (traits.includes("rare")) score -= 1;
-  if (traits.includes("unique")) score -= 999;
-  if (priceToGP(entry) <= 0 || isQuestLikeOrBlockedRarity(entry)) score -= 999;
+  const generalKeywords = kind === "permanent" ? GENERAL_PERMANENT_KEYWORDS : GENERAL_CONSUMABLE_KEYWORDS;
+  const roleKeywords = kind === "permanent"
+    ? [...CASTER_PERMANENT_KEYWORDS, ...MARTIAL_PERMANENT_KEYWORDS]
+    : [...CASTER_CONSUMABLE_KEYWORDS, ...MARTIAL_CONSUMABLE_KEYWORDS, ...ALCHEMICAL_CONSUMABLE_KEYWORDS];
+  for (const word of generalKeywords) if (blob.includes(word)) score += 2;
+  if (lane !== "general") for (const word of roleKeywords) if (blob.includes(word)) score += 2;
 
   if (kind === "permanent") {
     if (traits.includes("invested")) score += 3;
@@ -723,137 +855,67 @@ function scoreEntry(entry, ctx, kind, targetLevel, strategy = { id: "party", lab
     if (blob.includes("spacious pouch") || blob.includes("bag of holding")) score += 4;
   } else {
     if (blob.includes("elixir of life") || blob.includes("healing potion") || blob.includes("healing")) score += 7;
-    if (blob.includes("scroll") && counterHas(ctx.roleCounts, "caster")) score += 5;
-    if (blob.includes("wand") && counterHas(ctx.roleCounts, "caster")) score += 5;
-    if (blob.includes("bomb") && counterHas(ctx.roleCounts, "alchemical")) score += 4;
+    if (blob.includes("antidote") || blob.includes("antiplague") || blob.includes("antivenom")) score += 2;
   }
 
   const partyWeight = Number(game.settings.get(MODULE, "curatedPartyWeight")) || 0;
-  if (partyWeight > 0 && strategy?.id !== "general") {
-    if (strategy?.id === "spotlight" && strategy.profile) {
-      score += relevanceScore(blob, traits, strategy.profile, partyWeight * SPOTLIGHT_SCORE_MULTIPLIER);
-    } else {
-      score += relevanceScore(blob, traits, ctx, partyWeight);
-    }
+  if (lane === "party") score += scoreAgainstCounters(blob, traits, ctx.roles, ctx.keywords, ctx.traditions, partyWeight);
+  if (lane === "spotlight" && spotlight) {
+    const localRoles = new Map();
+    const localKeywords = new Map();
+    if (spotlight.classSlug) applyClassProfile(spotlight.classSlug, localRoles, localKeywords, 1);
+    const localTraditions = new Map();
+    for (const t of spotlight.traditions ?? []) { counterAdd(localTraditions, t); counterAdd(localRoles, t); }
+    score += scoreAgainstCounters(blob, traits, localRoles, localKeywords, localTraditions, partyWeight * 1.5);
   }
 
-  // Avoid traps that are technically useful but often become vendor clutter in a rotating West Marches party.
-  for (const narrow of ["underwater", "aquatic", "vehicle", "siege", "structure", "curse", "cursed"]) {
-    if (blob.includes(narrow)) score -= 3;
+  for (const narrow of ["underwater", "aquatic", "vehicle", "siege", "structure"]) {
+    if (blob.includes(narrow)) score -= 6;
   }
 
-  const rarityMultiplier = rarityWeightMultiplier(entry);
-  if (rarityMultiplier <= 0) return 0;
-
-  return Math.max(0.01, score) * rarityMultiplier * (0.85 + Math.random() * 0.3);
+  return Math.max(0, score) * rarityMultiplier(entry) * (0.9 + Math.random() * 0.2);
 }
 
-function relevanceScore(blob, traits, profileOrContext, partyWeight) {
+function scoreAgainstCounters(blob, traits, roles, keywords, traditions, partyWeight) {
   let score = 0;
-  const roleCounts = profileOrContext.roleCounts ?? profileOrContext.roles ?? new Map();
-  const keywordCounts = profileOrContext.keywordCounts ?? profileOrContext.keywords ?? new Map();
-  const traditionCounts = profileOrContext.traditionCounts ?? profileOrContext.traditions ?? new Map();
-
-  for (const [role, count] of roleCounts) {
-    const weight = partyWeight * duplicateWeight(count);
+  for (const [role, count] of roles.entries()) {
     for (const word of ROLE_KEYWORDS[role] ?? []) {
-      if (blob.includes(word)) score += weight;
+      if (blob.includes(word)) score += partyWeight * count;
     }
   }
-
-  for (const [word, count] of keywordCounts) {
-    if (blob.includes(word)) score += partyWeight * duplicateWeight(count);
+  for (const [word, count] of keywords.entries()) {
+    if (blob.includes(word)) score += partyWeight * count;
   }
-
-  for (const [tradition, count] of traditionCounts) {
-    if (traits.includes(tradition) || blob.includes(tradition)) score += partyWeight * 1.5 * duplicateWeight(count);
+  for (const [tradition, count] of traditions.entries()) {
+    if (traits.includes(tradition) || blob.includes(tradition)) score += partyWeight * 1.5 * count;
   }
-
   return score;
 }
 
-function chooseLootStrategy(ctx, mode) {
-  if (mode === "one-permanent" && ctx.actorProfiles.length) return spotlightStrategy(ctx) ?? strategyById("party");
-
-  const total = HYBRID_LOOT_STRATEGIES.reduce((sum, entry) => sum + entry.weight, 0);
-  let roll = Math.random() * total;
-  for (const strategy of HYBRID_LOOT_STRATEGIES) {
-    roll -= strategy.weight;
-    if (roll <= 0) {
-      if (strategy.id === "spotlight") return spotlightStrategy(ctx) ?? strategyById("party");
-      return strategy;
-    }
-  }
-  return strategyById("general");
-}
-
-function strategyById(id) {
-  return HYBRID_LOOT_STRATEGIES.find(strategy => strategy.id === id) ?? HYBRID_LOOT_STRATEGIES[0];
-}
-
-function spotlightStrategy(ctx) {
-  if (!ctx.actorProfiles.length) return null;
-  const profile = ctx.actorProfiles[Math.floor(Math.random() * ctx.actorProfiles.length)];
-  const classLabel = profile.classSlug ? ` ${profile.classSlug}` : "";
-  return {
-    ...strategyById("spotlight"),
-    profile,
-    label: `spotlight:${classLabel || " character"}`,
-  };
-}
-
-function strategyLabel(strategy) {
-  if (!strategy) return "general useful";
-  if (strategy.id !== "spotlight") return strategy.label;
-  const actorName = strategy.profile?.actor?.name;
-  const classSlug = strategy.profile?.classSlug;
-  if (actorName && classSlug) return `spotlight ${actorName} (${classSlug})`;
-  if (actorName) return `spotlight ${actorName}`;
-  if (classSlug) return `spotlight ${classSlug}`;
-  return "spotlight";
-}
-
-function weightedPick(pool, scoreFn, alreadyPicked) {
-  const candidates = pool.filter(e => !alreadyPicked.has(`${e.__pack}:${e._id}`));
+function weightedPick(pool, scoreFn, alreadyPicked, budgetFilter = null) {
+  const candidates = pool.filter(e => !alreadyPicked.has(`${e.__pack}:${e._id}`) && (!budgetFilter || budgetFilter(e)));
   if (!candidates.length) return null;
   const weights = candidates.map(scoreFn);
   const total = weights.reduce((sum, weight) => sum + Math.max(0, weight), 0);
-  if (total <= 0) return candidates[Math.floor(Math.random() * candidates.length)];
+  if (total <= 0) return null;
   let roll = Math.random() * total;
   for (let i = 0; i < candidates.length; i++) {
-    roll -= weights[i];
+    roll -= Math.max(0, weights[i]);
     if (roll <= 0) return candidates[i];
   }
   return candidates[candidates.length - 1];
 }
 
-function poolFor(entries, ctx, kind, targetLevel) {
-  const predicate = kind === "permanent" ? isUsefulPermanent : (entry) => isUsefulConsumable(entry, ctx);
-  let radius = 0;
-  let pool = [];
-  while (radius <= 3 && pool.length < 5) {
-    pool = entries.filter(entry => predicate(entry) && Math.abs(entryLevel(entry) - targetLevel) <= radius);
-    radius += 1;
+function poolFor(entries, ctx, kind, targetLevel, lane, spotlight, exactLevels) {
+  const predicate = entry => isUsefulEntry(entry, ctx, kind, lane, spotlight);
+  const exact = entries.filter(entry => predicate(entry) && entryLevel(entry) === targetLevel);
+  if (exact.length) return exact;
+  if (exactLevels) return [];
+  for (let radius = 1; radius <= 3; radius++) {
+    const pool = entries.filter(entry => predicate(entry) && Math.abs(entryLevel(entry) - targetLevel) <= radius);
+    if (pool.length) return pool;
   }
-  return pool;
-}
-
-function budgetSlack() {
-  return Math.max(1, Number(game.settings.get(MODULE, "curatedBudgetSlack")) || 1.15);
-}
-
-function pickBudgeted(pool, scoreFn, pickedKeys, plan, currentItemValue) {
-  const softCap = Number(plan.softBudget) || 0;
-  if (softCap <= 0) return weightedPick(pool, scoreFn, pickedKeys);
-
-  const hardCap = softCap * budgetSlack();
-  const budgetedPool = pool.filter(entry => currentItemValue + priceToGP(entry) <= hardCap);
-  const selected = weightedPick(budgetedPool, scoreFn, pickedKeys);
-  if (selected) return selected;
-
-  // Fallback: if the pool is thin, allow one over-budget useful item rather than
-  // returning nothing. Currency is reduced later to compensate when possible.
-  return weightedPick(pool, scoreFn, pickedKeys);
+  return [];
 }
 
 async function generateCuratedLoot(actor, { mode = "session" } = {}) {
@@ -867,61 +929,96 @@ async function generateCuratedLoot(actor, { mode = "session" } = {}) {
   const toCreate = [];
   const summary = [];
   let itemValue = 0;
+  const slack = Math.max(1, Number(game.settings.get(MODULE, "curatedBudgetSlack")) || 1.15);
+  const softCap = Math.max(plan.budget || 0, plan.currency || 0) * slack;
 
-  for (const slot of plan.permanent) {
+  const choose = async (kind, slot) => {
     for (let i = 0; i < slot.count; i++) {
-      const strategy = chooseLootStrategy(ctx, mode);
-      const pool = poolFor(entries, ctx, "permanent", slot.level);
-      const entry = pickBudgeted(pool, e => scoreEntry(e, ctx, "permanent", slot.level, strategy), pickedKeys, plan, itemValue);
+      const lane = chooseLane(mode, kind, ctx);
+      let pool = poolFor(entries, ctx, kind, slot.targetLevel, lane.type, lane.spotlight, plan.exactLevels);
+      let effectiveLane = lane;
+      if (!pool.length && lane.type === "general") {
+        effectiveLane = { type: "party", spotlight: null };
+        pool = poolFor(entries, ctx, kind, slot.targetLevel, "party", null, plan.exactLevels);
+      }
+      if (!pool.length && lane.type !== "general") {
+        effectiveLane = { type: "general", spotlight: null };
+        pool = poolFor(entries, ctx, kind, slot.targetLevel, "general", null, plan.exactLevels);
+      }
+      const budgetFilter = (entry) => softCap <= 0 || (itemValue + priceToGP(entry) + plan.currency) <= softCap;
+      const entry = weightedPick(pool, e => scoreEntry(e, ctx, kind, slot.targetLevel, effectiveLane.type, effectiveLane.spotlight), pickedKeys, budgetFilter)
+        ?? weightedPick(pool, e => scoreEntry(e, ctx, kind, slot.targetLevel, effectiveLane.type, effectiveLane.spotlight), pickedKeys);
       if (!entry) continue;
       pickedKeys.add(`${entry.__pack}:${entry._id}`);
-      itemValue += priceToGP(entry);
-      const raw = await rawItem(entry);
-      if (raw) {
-        toCreate.push(raw);
-        summary.push(`Permanent ${entryLevel(entry)}: ${entry.name} <em>(${strategyLabel(strategy)})</em>`);
-      }
+      const raw = await rawItem(entry, ctx, kind, slot.targetLevel, effectiveLane, mode);
+      if (!raw) continue;
+      const value = priceToGP(raw) || priceToGP(entry);
+      itemValue += value;
+      toCreate.push(raw);
+      const actualLevel = entryLevel(raw) || entryLevel(entry);
+      const targetNote = actualLevel === slot.targetLevel ? "" : ` for target ${slot.targetLevel}`;
+      const laneLabel = laneLabelFor(effectiveLane);
+      summary.push(`${kind === "permanent" ? "Permanent" : "Consumable"} ${actualLevel}${targetNote}: ${raw.name} (${laneLabel})`);
     }
-  }
+  };
 
-  for (const slot of plan.consumable) {
-    for (let i = 0; i < slot.count; i++) {
-      const strategy = chooseLootStrategy(ctx, mode);
-      const pool = poolFor(entries, ctx, "consumable", slot.level);
-      const entry = pickBudgeted(pool, e => scoreEntry(e, ctx, "consumable", slot.level, strategy), pickedKeys, plan, itemValue);
-      if (!entry) continue;
-      pickedKeys.add(`${entry.__pack}:${entry._id}`);
-      itemValue += priceToGP(entry);
-      const raw = await rawItem(entry);
-      if (raw) {
-        toCreate.push(raw);
-        summary.push(`Consumable ${entryLevel(entry)}: ${entry.name} <em>(${strategyLabel(strategy)})</em>`);
-      }
-    }
-  }
+  for (const slot of plan.permanent) await choose("permanent", slot);
+  for (const slot of plan.consumable) await choose("consumable", slot);
 
-  let currencyToAdd = plan.currency;
-  if (plan.softBudget > 0 && itemValue + currencyToAdd > plan.softBudget) {
-    currencyToAdd = Math.max(0, Math.floor(plan.softBudget - itemValue));
-  }
+  let currency = plan.currency;
+  if (softCap > 0 && itemValue + currency > softCap) currency = Math.max(0, Math.floor(softCap - itemValue));
 
   if (toCreate.length) await actor.createEmbeddedDocuments("Item", toCreate);
-  if (currencyToAdd > 0) {
-    await addCurrencyGP(actor, currencyToAdd);
-    summary.push(`Currency: ${currencyToAdd} gp equivalent`);
+  if (currency > 0) {
+    await addCurrencyGP(actor, currency);
+    summary.push(`Currency: ${currency} gp equivalent`);
   }
-  summary.push(`Budget: item value ${Math.round(itemValue * 100) / 100} gp + currency ${currencyToAdd} gp / soft cap ${plan.softBudget} gp`);
 
   const names = ctx.actors.map(a => a.name).join(", ") || "fallback party";
-  const ignoredNames = (ctx.ignored ?? []).map(entry => `${entry.actor?.name ?? "Unknown"} (${entry.reason})`);
-  const classText = [...(ctx.classCounts ?? new Map()).entries()].map(([name, count]) => `${name} ×${count}`).join(", ") || "none";
-  const ignoredText = ignoredNames.length ? `<br><strong>Ignored non-PC actors:</strong> ${ignoredNames.join(", ")}` : "";
-  const content = `<h3>Curated Loot Generated</h3><p><strong>Mode:</strong> ${mode}<br><strong>Party source:</strong> ${ctx.partySource}<br><strong>Party:</strong> ${names}<br><strong>Average Level:</strong> ${ctx.level}<br><strong>Class profile:</strong> ${classText}${ignoredText}</p><ul>${summary.map(s => `<li>${s}</li>`).join("")}</ul>`;
+  const classProfile = counterSummary(ctx.classCounts).map(([c, n]) => `${c} ×${n}`).join(", ") || "none";
+  const ignored = ctx.resolution.ignored.map(i => `${i.actor?.name ?? "Unknown"} (${i.reason})`).join(", ") || "none";
+  const planSummary = planLine(plan);
+  const content = `<h3>Curated Loot Generated</h3>
+    <p><strong>Mode:</strong> ${escapeHtml(mode)}<br>
+    <strong>Party source:</strong> ${escapeHtml(ctx.resolution.source)}<br>
+    <strong>Party:</strong> ${escapeHtml(names)}<br>
+    <strong>Average Level:</strong> ${ctx.level}<br>
+    <strong>Class profile:</strong> ${escapeHtml(classProfile)}<br>
+    <strong>Ignored non-PC actors:</strong> ${escapeHtml(ignored)}<br>
+    <strong>Rules slots:</strong> ${escapeHtml(planSummary)}</p>
+    <ul>${summary.map(s => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
+    <p><strong>Budget:</strong> item value ${roundGp(itemValue)} gp + currency ${roundGp(currency)} gp / soft cap ${roundGp(softCap)} gp</p>`;
   ChatMessage.create({ content, whisper: ChatMessage.getWhisperRecipients("GM") });
   ui.notifications?.info(`Curated loot generated: ${summary.length} reward entries.`);
 }
 
-async function rawItem(entry) {
+function laneLabelFor(lane) {
+  if (lane.type === "general") return "general useful";
+  if (lane.type === "spotlight") return `spotlight ${lane.spotlight?.actor?.name ?? "PC"}${lane.spotlight?.classSlug ? ` (${lane.spotlight.classSlug})` : ""}`;
+  return "party weighted";
+}
+
+function planLine(plan) {
+  const fmt = slots => slots.map(s => `${s.targetLevel}×${s.count}${s.source ? ` ${s.source}` : ""}`).join(", ") || "none";
+  return `permanent [${fmt(plan.permanent)}]; consumable [${fmt(plan.consumable)}]; currency ${plan.currency} gp`;
+}
+
+function roundGp(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function escapeHtml(value) {
+  const div = document.createElement("div");
+  div.textContent = String(value ?? "");
+  return div.innerHTML;
+}
+
+async function rawItem(entry, ctx, kind, targetLevel, lane, mode) {
+  if (kind === "consumable" && game.settings.get(MODULE, "curatedSpecificScrolls") && isGenericScroll(entry)) {
+    const scroll = await makeSpecificScroll(entry, ctx, targetLevel, lane);
+    if (scroll) return scroll;
+  }
+
   const doc = await getDoc(entry);
   if (!doc) return null;
   const raw = doc.toObject();
@@ -933,8 +1030,158 @@ async function rawItem(entry) {
     ...(raw.flags[MODULE] ?? {}),
     curated: true,
     source: { pack: entry.__pack, id: entry._id },
+    audience: [...audienceForEntry(entry, kind).roles],
+    lane: laneLabelFor(lane),
+    mode,
   };
   return raw;
+}
+
+function isGenericScroll(entry) {
+  const blob = textBlob(entry);
+  return entry?.type === "consumable" && (traitList(entry).includes("scroll") || entry.system?.consumableType?.value === "scroll" || /scroll of a .*rank spell/i.test(entry.name ?? "") || blob.includes("scroll of a"));
+}
+
+function scrollRankFromEntry(entry, targetLevel) {
+  const name = String(entry?.name ?? "");
+  const match = name.match(/(\d+)(?:st|nd|rd|th)?[-\s]*(?:rank|level)/i);
+  if (match) return Math.max(1, Math.min(10, Number(match[1]) || 1));
+  const level = entryLevel(entry) || targetLevel || 1;
+  if (level <= 1) return 1;
+  if (level >= 19) return 10;
+  return Math.max(1, Math.min(10, Math.ceil(level / 2)));
+}
+
+async function makeSpecificScroll(scrollEntry, ctx, targetLevel, lane) {
+  const rank = scrollRankFromEntry(scrollEntry, targetLevel);
+  const spellEntry = await pickSpellForScroll(rank, ctx, lane);
+  if (!spellEntry) return null;
+  const spellDoc = await getSpellDoc(spellEntry);
+  if (!spellDoc) return null;
+
+  const generated = await trySystemScrollGeneration(spellDoc, rank);
+  if (generated) {
+    generated.flags = generated.flags ?? {};
+    generated.flags[MODULE] = {
+      ...(generated.flags[MODULE] ?? {}),
+      curated: true,
+      generatedSpecificScroll: true,
+      spell: { pack: spellEntry.__pack, id: spellEntry._id },
+      source: { pack: scrollEntry.__pack, id: scrollEntry._id },
+      lane: laneLabelFor(lane),
+    };
+    return generated;
+  }
+
+  const scrollDoc = await getDoc(scrollEntry);
+  if (!scrollDoc) return null;
+  const raw = scrollDoc.toObject();
+  const spellRaw = spellDoc.toObject();
+  delete raw._id;
+  raw.name = `Scroll of ${spellDoc.name} (${ordinal(rank)} Rank)`;
+  raw.img = spellDoc.img ?? raw.img;
+  raw.system = raw.system ?? {};
+  raw.system.quantity = 1;
+  raw.system.level = raw.system.level ?? {};
+  raw.system.level.value = SCROLL_ITEM_LEVEL_BY_RANK[rank] ?? entryLevel(scrollEntry);
+  raw.system.price = raw.system.price ?? {};
+  raw.system.price.value = { gp: SCROLL_PRICE_BY_RANK[rank] ?? priceToGP(scrollEntry) };
+  raw.system.spell = spellRaw;
+  raw.system.description = raw.system.description ?? {};
+  const original = raw.system.description.value ?? "";
+  raw.system.description.value = `${original}<hr><p><strong>Curated scroll spell:</strong> ${spellDoc.name}, rank ${rank}.</p>`;
+  const spellTraits = spellRaw.system?.traits?.value ?? [];
+  raw.system.traits = raw.system.traits ?? {};
+  raw.system.traits.value = Array.from(new Set([...(raw.system.traits.value ?? []), "scroll", "magical", ...spellTraits]));
+  raw.system.traits.rarity = spellRaw.system?.traits?.rarity ?? raw.system.traits.rarity ?? "common";
+  raw.flags = raw.flags ?? {};
+  raw.flags[MODULE] = {
+    ...(raw.flags[MODULE] ?? {}),
+    curated: true,
+    generatedSpecificScroll: true,
+    generatedByFallback: true,
+    spell: { pack: spellEntry.__pack, id: spellEntry._id },
+    source: { pack: scrollEntry.__pack, id: scrollEntry._id },
+    lane: laneLabelFor(lane),
+  };
+  return raw;
+}
+
+async function trySystemScrollGeneration(spellDoc, rank) {
+  const attempts = [
+    () => spellDoc.toScroll?.({ rank }),
+    () => spellDoc.toScroll?.({ castRank: rank }),
+    () => spellDoc.toScroll?.(rank),
+    () => spellDoc.toConsumable?.({ type: "scroll", rank }),
+    () => spellDoc.toConsumable?.("scroll", rank),
+  ];
+  for (const attempt of attempts) {
+    try {
+      const result = await attempt();
+      if (!result) continue;
+      const raw = typeof result.toObject === "function" ? result.toObject() : foundry.utils.deepClone(result);
+      if (!raw?.name) continue;
+      delete raw._id;
+      raw.system = raw.system ?? {};
+      raw.system.quantity = 1;
+      return raw;
+    } catch (_error) {
+      // Try the next known PF2e API shape.
+    }
+  }
+  return null;
+}
+
+async function pickSpellForScroll(rank, ctx, lane) {
+  const spells = await preloadSpellIndex();
+  const traditions = new Set([...ctx.traditions.keys()]);
+  if (!traditions.size) {
+    for (const role of ["arcane", "divine", "occult", "primal"]) if (counterHas(ctx.roles, role)) traditions.add(role);
+  }
+  let pool = spells.filter(spell => isScrollableSpell(spell, rank, traditions));
+  if (!pool.length) pool = spells.filter(spell => isScrollableSpell(spell, rank, null));
+  if (!pool.length) return null;
+  const weights = pool.map(spell => scoreSpellForScroll(spell, ctx, lane));
+  const total = weights.reduce((s, w) => s + Math.max(0, w), 0);
+  if (total <= 0) return pool[Math.floor(Math.random() * pool.length)];
+  let roll = Math.random() * total;
+  for (let i = 0; i < pool.length; i++) {
+    roll -= Math.max(0, weights[i]);
+    if (roll <= 0) return pool[i];
+  }
+  return pool[pool.length - 1];
+}
+
+function isScrollableSpell(spell, rank, traditions) {
+  if (spell?.type !== "spell") return false;
+  const level = Number(spell.system?.level?.value ?? 0);
+  if (level !== rank) return false;
+  const category = String(spell.system?.category?.value ?? "").toLowerCase();
+  if (["cantrip", "focus", "ritual"].includes(category)) return false;
+  const spellTraditions = toArray(spell.system?.traditions?.value).map(t => String(t).toLowerCase());
+  if (traditions?.size && !spellTraditions.some(t => traditions.has(t))) return false;
+  if (itemRarity(spell) === "unique") return false;
+  return true;
+}
+
+function scoreSpellForScroll(spell, ctx, lane) {
+  const blob = textBlob(spell);
+  let score = 1;
+  const rarity = itemRarity(spell);
+  if (rarity === "rare") score *= Math.max(0, Number(game.settings.get(MODULE, "curatedRareWeight")) || 0.12);
+  if (rarity === "uncommon") score *= Math.max(0, Number(game.settings.get(MODULE, "curatedUncommonWeight")) || 0.45);
+  for (const word of ["heal", "soothe", "fear", "invisibility", "dispel", "restoration", "sanctuary", "bless", "heroism", "haste", "fly", "see", "darkvision", "water breathing", "resist", "cleanse"]) {
+    if (blob.includes(word)) score += 4;
+  }
+  const partyWeight = Number(game.settings.get(MODULE, "curatedPartyWeight")) || 0;
+  score += scoreAgainstCounters(blob, traitList(spell), ctx.roles, ctx.keywords, ctx.traditions, lane.type === "spotlight" ? partyWeight * 0.75 : partyWeight * 0.5);
+  return Math.max(0.01, score) * (0.9 + Math.random() * 0.2);
+}
+
+function ordinal(n) {
+  const num = Number(n) || 1;
+  const suffix = num === 1 ? "1st" : num === 2 ? "2nd" : num === 3 ? "3rd" : `${num}th`;
+  return suffix;
 }
 
 function currencyFromGP(gpAmount) {
