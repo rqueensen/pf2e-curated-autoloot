@@ -32,6 +32,13 @@ const TREASURE_BY_LEVEL = {
   20: { permanent: { 20: 4 }, consumable: { 20: 4, 19: 2 }, currency: 140000, extraPc: 35000 },
 };
 
+const TOTAL_VALUE_BY_LEVEL = {
+  1: 175, 2: 300, 3: 500, 4: 850, 5: 1350, 6: 2000, 7: 2900,
+  8: 4000, 9: 5700, 10: 8000, 11: 11500, 12: 16500,
+  13: 25000, 14: 36500, 15: 54500, 16: 82500, 17: 128000,
+  18: 208000, 19: 355000, 20: 490000,
+};
+
 const DEFAULT_JUNK_REGEX = [
   "coffee", "beans?", "coal", "flour", "grain", "wheat", "corn", "oats?",
   "rations?", "jerky", "cheese", "soap", "chalk", "candle", "rope", "twine",
@@ -128,10 +135,42 @@ Hooks.once("init", () => {
 
   registerCuratedSetting("curatedSessionFraction", {
     name: "Session treasure fraction",
-    hint: "How much of the official full-level treasure currency to give on a session treasure roll. Items use a curated per-session plan.",
+    hint: "How much of the official full-level treasure plan to sample on a session treasure roll. Default 0.25 means roughly four rewarding sessions per level.",
     type: Number,
     default: 0.25,
     range: { min: 0.05, max: 1, step: 0.05 },
+  });
+
+  registerCuratedSetting("curatedBudgetSlack", {
+    name: "Budget slack",
+    hint: "Soft over-budget allowance for curated item picks. 1.15 allows roughly 15% above the proportional Treasure by Level budget before candidates are rejected.",
+    type: Number,
+    default: 1.15,
+    range: { min: 1, max: 2, step: 0.05 },
+  });
+
+  registerCuratedSetting("curatedAboveTableChance", {
+    name: "Above-table permanent item chance",
+    hint: "Chance for a permanent item slot to roll one level above the normal Treasure by Level slot, capped at party level +2 and still budget-filtered.",
+    type: Number,
+    default: 0.15,
+    range: { min: 0, max: 0.5, step: 0.05 },
+  });
+
+  registerCuratedSetting("curatedUncommonWeight", {
+    name: "Uncommon item weight",
+    hint: "Weighted-pick multiplier for uncommon curated loot. Lower than 1 means uncommon items appear less often than common items while remaining possible.",
+    type: Number,
+    default: 0.45,
+    range: { min: 0, max: 1, step: 0.05 },
+  });
+
+  registerCuratedSetting("curatedRareWeight", {
+    name: "Rare item weight",
+    hint: "Weighted-pick multiplier for rare curated loot. Rare items are allowed, but should be much less common than uncommon items.",
+    type: Number,
+    default: 0.12,
+    range: { min: 0, max: 1, step: 0.01 },
   });
 
   registerCuratedSetting("curatedPartyWeight", {
@@ -168,46 +207,32 @@ Hooks.on("getActorSheetHeaderButtons", (app, buttons) => {
     if (!game.settings.get(MODULE, "curatedEnabled")) return;
     const actor = app?.actor;
     if (!isLootActor(actor)) return;
-    buttons.unshift({
-      label: "Session Treasure",
-      class: "pf2e-curated-session-treasure",
-      icon: "fas fa-gem",
-      onclick: () => generateCuratedLoot(actor, { mode: "session" }),
-    });
-    buttons.unshift({
-      label: "Curated Full Level",
-      class: "pf2e-curated-full-treasure",
-      icon: "fas fa-wand-magic-sparkles",
-      onclick: () => generateCuratedLoot(actor, { mode: "full-level" }),
-    });
+    if (buttons.some(button => String(button.class ?? "").startsWith("pf2e-curated-"))) return;
+
+    // Use the normal Foundry sheet header only. Injecting body buttons into
+    // PF2e loot sheets creates oversized card-like buttons in some layouts.
+    buttons.unshift(
+      {
+        label: "Session Treasure",
+        class: "pf2e-curated-session-treasure",
+        icon: "fas fa-gem",
+        onclick: () => generateCuratedLoot(actor, { mode: "session" }),
+      },
+      {
+        label: "Curated Full Level",
+        class: "pf2e-curated-full-treasure",
+        icon: "fas fa-wand-magic-sparkles",
+        onclick: () => generateCuratedLoot(actor, { mode: "full-level" }),
+      },
+      {
+        label: "One Permanent",
+        class: "pf2e-curated-one-permanent",
+        icon: "fas fa-hat-wizard",
+        onclick: () => generateCuratedLoot(actor, { mode: "one-permanent" }),
+      },
+    );
   } catch (error) {
     console.warn(`${MODULE}: failed to add curated header buttons`, error);
-  }
-});
-
-Hooks.on("renderActorSheet", (app, html) => {
-  try {
-    if (!game.settings.get(MODULE, "curatedEnabled")) return;
-    const actor = app?.actor;
-    if (!isLootActor(actor)) return;
-    const root = html instanceof HTMLElement ? html : html?.[0];
-    if (!root || root.querySelector("[data-pf2e-curated-loot-bar]")) return;
-    const bar = document.createElement("div");
-    bar.dataset.pf2eCuratedLootBar = "true";
-    bar.style.display = "flex";
-    bar.style.gap = "0.5rem";
-    bar.style.margin = "0.25rem 0";
-    bar.innerHTML = `
-      <button type="button" data-action="pf2e-curated-session"><i class="fas fa-gem"></i> Session Treasure</button>
-      <button type="button" data-action="pf2e-curated-full"><i class="fas fa-wand-magic-sparkles"></i> Curated Full Level</button>
-      <button type="button" data-action="pf2e-curated-permanent"><i class="fas fa-hat-wizard"></i> One Relevant Permanent</button>
-    `;
-    bar.querySelector("[data-action='pf2e-curated-session']")?.addEventListener("click", () => generateCuratedLoot(actor, { mode: "session" }));
-    bar.querySelector("[data-action='pf2e-curated-full']")?.addEventListener("click", () => generateCuratedLoot(actor, { mode: "full-level" }));
-    bar.querySelector("[data-action='pf2e-curated-permanent']")?.addEventListener("click", () => generateCuratedLoot(actor, { mode: "one-permanent" }));
-    root.prepend(bar);
-  } catch (error) {
-    console.warn(`${MODULE}: failed to inject curated loot buttons`, error);
   }
 });
 
@@ -481,48 +506,93 @@ function actorClassSlug(actor) {
   return slugify(classItem?.slug ?? classItem?.name ?? actor?.class?.slug ?? actor?.system?.details?.class?.value);
 }
 
+function treasureTotalBudget(ctx, fraction = 1) {
+  const baseTotal = TOTAL_VALUE_BY_LEVEL[ctx.level] ?? TOTAL_VALUE_BY_LEVEL[1];
+  const extraPcs = Math.max(0, ctx.partySize - 4);
+  // The official additional-PC guidance adds item slots plus currency. A quarter
+  // of the four-PC total is a practical soft value for each extra PC's share.
+  return Math.floor((baseTotal + extraPcs * (baseTotal / 4)) * fraction);
+}
+
+function stochasticCount(value, { min = 0 } = {}) {
+  const whole = Math.floor(value);
+  const fractional = value - whole;
+  return Math.max(min, whole + (Math.random() < fractional ? 1 : 0));
+}
+
+function maybeAboveTablePermanentLevel(level, ctx) {
+  const chance = Math.max(0, Math.min(0.5, Number(game.settings.get(MODULE, "curatedAboveTableChance")) || 0));
+  if (chance <= 0 || Math.random() >= chance) return level;
+  return Math.min(20, ctx.level + 2, level + 1);
+}
+
+function expandSlots(obj) {
+  const slots = [];
+  for (const [level, count] of Object.entries(obj ?? {})) {
+    for (let i = 0; i < (Number(count) || 0); i++) slots.push(Number(level));
+  }
+  return slots;
+}
+
+function collapseSlots(levels) {
+  const counts = new Map();
+  for (const level of levels) counts.set(level, (counts.get(level) ?? 0) + 1);
+  return [...counts.entries()].map(([level, count]) => ({ level, count }));
+}
+
+function sampleSlots(levels, fraction, { minimum = 0 } = {}) {
+  if (!levels.length) return [];
+  const shuffled = [...levels].sort(() => Math.random() - 0.5);
+  const wanted = stochasticCount(levels.length * fraction, { min: minimum });
+  return shuffled.slice(0, Math.min(levels.length, wanted));
+}
+
 function selectionPlan(ctx, mode) {
   const spec = TREASURE_BY_LEVEL[ctx.level] ?? TREASURE_BY_LEVEL[1];
   const extraPcs = Math.max(0, ctx.partySize - 4);
   const fraction = Math.max(0.05, Math.min(1, Number(game.settings.get(MODULE, "curatedSessionFraction")) || 0.25));
 
   if (mode === "one-permanent") {
+    const level = maybeAboveTablePermanentLevel(Math.min(20, ctx.level + 1), ctx);
     return {
-      permanent: [{ level: Math.min(20, ctx.level + 1), count: 1 }],
+      permanent: [{ level, count: 1 }],
       consumable: [],
       currency: 0,
+      softBudget: treasureTotalBudget(ctx, fraction),
+      budgetFraction: fraction,
     };
+  }
+
+  const permanentLevels = expandSlots(spec.permanent);
+  const consumableLevels = expandSlots(spec.consumable);
+  for (let i = 0; i < extraPcs; i++) {
+    permanentLevels.push(Math.min(20, ctx.level + (Math.random() < 0.5 ? 1 : 0)));
+    consumableLevels.push(Math.min(20, ctx.level + 1), ctx.level);
   }
 
   if (mode === "full-level") {
-    const permanent = objectSlots(spec.permanent);
-    const consumable = objectSlots(spec.consumable);
-    for (let i = 0; i < extraPcs; i++) {
-      permanent.push({ level: Math.min(20, ctx.level + (Math.random() < 0.5 ? 1 : 0)), count: 1 });
-      consumable.push({ level: Math.min(20, ctx.level + 1), count: 1 }, { level: ctx.level, count: 1 });
-    }
     return {
-      permanent,
-      consumable,
+      permanent: collapseSlots(permanentLevels.map(level => maybeAboveTablePermanentLevel(level, ctx))),
+      consumable: collapseSlots(consumableLevels),
       currency: spec.currency + (extraPcs * spec.extraPc),
+      softBudget: treasureTotalBudget(ctx, 1),
+      budgetFraction: 1,
     };
   }
 
-  // Session mode: always give something useful, but only a fraction of the
-  // full-level currency. This matches a West Marches cadence of roughly four
-  // sessions per level while still feeling rewarding every session.
-  const permanentLevel = Math.min(20, ctx.level + (Math.random() < 0.65 ? 1 : 0));
-  const consumableA = Math.min(20, ctx.level + 1);
-  const consumableB = Math.max(1, ctx.level + (Math.random() < 0.5 ? 0 : -1));
-  const consumableCount = ctx.partySize >= 5 ? 3 : 2;
+  // Session mode samples a proportional slice of the full-level item slots.
+  // This preserves PF2e's item/currency shape, but lets a 5-PC party naturally
+  // roll a second permanent item about 25% of the time at the default 0.25 slice.
+  const sampledPermanent = sampleSlots(permanentLevels, fraction, { minimum: 1 })
+    .map(level => maybeAboveTablePermanentLevel(level, ctx));
+  const sampledConsumable = sampleSlots(consumableLevels, fraction, { minimum: 2 });
 
   return {
-    permanent: [{ level: permanentLevel, count: 1 }],
-    consumable: [
-      { level: consumableA, count: 1 },
-      { level: consumableB, count: Math.max(1, consumableCount - 1) },
-    ],
+    permanent: collapseSlots(sampledPermanent),
+    consumable: collapseSlots(sampledConsumable),
     currency: Math.floor((spec.currency + extraPcs * spec.extraPc) * fraction),
+    softBudget: treasureTotalBudget(ctx, fraction),
+    budgetFraction: fraction,
   };
 }
 
@@ -575,9 +645,35 @@ function isJunk(entry) {
   }
 }
 
+function rarityWeightMultiplier(entry) {
+  const traits = traitList(entry);
+  if (traits.includes("unique")) return 0;
+  if (traits.includes("rare")) return Math.max(0, Number(game.settings.get(MODULE, "curatedRareWeight")) || 0);
+  if (traits.includes("uncommon")) return Math.max(0, Number(game.settings.get(MODULE, "curatedUncommonWeight")) || 0);
+  return 1;
+}
+
+function isQuestLikeOrBlockedRarity(entry) {
+  const traits = traitList(entry);
+  if (traits.includes("unique")) return true;
+
+  const blob = textBlob(entry);
+  if (/\b(contract|pact|boon|curse|cursed|artifact|relic|story|quest)\b/.test(blob)) return true;
+
+  return false;
+}
+
+function isZeroValueOrQuestLike(entry) {
+  // PF2e equipment compendia contain campaign/quest objects, boons, contracts,
+  // and other non-purchasable records. These often have no listed price or 0 gp
+  // and are bad random-chest rewards even when their item type is "equipment."
+  if (priceToGP(entry) <= 0) return true;
+  return isQuestLikeOrBlockedRarity(entry);
+}
+
 function isUsefulPermanent(entry) {
   if (!["equipment", "weapon", "armor", "shield"].includes(entry?.type)) return false;
-  if (isJunk(entry)) return false;
+  if (isJunk(entry) || isZeroValueOrQuestLike(entry)) return false;
   const blob = textBlob(entry);
   const traits = traitList(entry);
   const magical = ["magical", "invested", "arcane", "divine", "occult", "primal", "focused", "rune"].some(t => traits.includes(t));
@@ -588,7 +684,7 @@ function isUsefulPermanent(entry) {
 
 function isUsefulConsumable(entry, ctx) {
   if (entry?.type !== "consumable") return false;
-  if (isJunk(entry)) return false;
+  if (isJunk(entry) || isZeroValueOrQuestLike(entry)) return false;
   const blob = textBlob(entry);
   const traits = traitList(entry);
   const hasUsefulTrait = ["potion", "elixir", "scroll", "oil", "talisman", "fulu", "mutagen", "bomb", "catalyst", "magical", "alchemical"].some(t => traits.includes(t));
@@ -611,10 +707,14 @@ function scoreEntry(entry, ctx, kind, targetLevel, strategy = { id: "party", lab
   const keywordList = kind === "permanent" ? COMMON_PERMANENT_KEYWORDS : COMMON_CONSUMABLE_KEYWORDS;
   for (const word of keywordList) if (blob.includes(word)) score += 2;
 
+  // Rarity should influence probability, not act as a hard ban.
+  // Common remains the default. Uncommon and rare stay possible but are
+  // increasingly down-weighted by rarityWeightMultiplier() at the end.
   if (traits.includes("common")) score += 1;
-  if (traits.includes("uncommon")) score += 0.5;
+  if (traits.includes("uncommon")) score += 0;
   if (traits.includes("rare")) score -= 1;
   if (traits.includes("unique")) score -= 999;
+  if (priceToGP(entry) <= 0 || isQuestLikeOrBlockedRarity(entry)) score -= 999;
 
   if (kind === "permanent") {
     if (traits.includes("invested")) score += 3;
@@ -642,7 +742,10 @@ function scoreEntry(entry, ctx, kind, targetLevel, strategy = { id: "party", lab
     if (blob.includes(narrow)) score -= 3;
   }
 
-  return Math.max(0.01, score) * (0.85 + Math.random() * 0.3);
+  const rarityMultiplier = rarityWeightMultiplier(entry);
+  if (rarityMultiplier <= 0) return 0;
+
+  return Math.max(0.01, score) * rarityMultiplier * (0.85 + Math.random() * 0.3);
 }
 
 function relevanceScore(blob, traits, profileOrContext, partyWeight) {
@@ -735,6 +838,24 @@ function poolFor(entries, ctx, kind, targetLevel) {
   return pool;
 }
 
+function budgetSlack() {
+  return Math.max(1, Number(game.settings.get(MODULE, "curatedBudgetSlack")) || 1.15);
+}
+
+function pickBudgeted(pool, scoreFn, pickedKeys, plan, currentItemValue) {
+  const softCap = Number(plan.softBudget) || 0;
+  if (softCap <= 0) return weightedPick(pool, scoreFn, pickedKeys);
+
+  const hardCap = softCap * budgetSlack();
+  const budgetedPool = pool.filter(entry => currentItemValue + priceToGP(entry) <= hardCap);
+  const selected = weightedPick(budgetedPool, scoreFn, pickedKeys);
+  if (selected) return selected;
+
+  // Fallback: if the pool is thin, allow one over-budget useful item rather than
+  // returning nothing. Currency is reduced later to compensate when possible.
+  return weightedPick(pool, scoreFn, pickedKeys);
+}
+
 async function generateCuratedLoot(actor, { mode = "session" } = {}) {
   if (!actor) return ui.notifications?.warn("No loot actor selected.");
   if (!isLootActor(actor)) return ui.notifications?.warn("Curated loot can only be generated on a loot actor.");
@@ -745,14 +866,16 @@ async function generateCuratedLoot(actor, { mode = "session" } = {}) {
   const pickedKeys = new Set();
   const toCreate = [];
   const summary = [];
+  let itemValue = 0;
 
   for (const slot of plan.permanent) {
     for (let i = 0; i < slot.count; i++) {
       const strategy = chooseLootStrategy(ctx, mode);
       const pool = poolFor(entries, ctx, "permanent", slot.level);
-      const entry = weightedPick(pool, e => scoreEntry(e, ctx, "permanent", slot.level, strategy), pickedKeys);
+      const entry = pickBudgeted(pool, e => scoreEntry(e, ctx, "permanent", slot.level, strategy), pickedKeys, plan, itemValue);
       if (!entry) continue;
       pickedKeys.add(`${entry.__pack}:${entry._id}`);
+      itemValue += priceToGP(entry);
       const raw = await rawItem(entry);
       if (raw) {
         toCreate.push(raw);
@@ -765,9 +888,10 @@ async function generateCuratedLoot(actor, { mode = "session" } = {}) {
     for (let i = 0; i < slot.count; i++) {
       const strategy = chooseLootStrategy(ctx, mode);
       const pool = poolFor(entries, ctx, "consumable", slot.level);
-      const entry = weightedPick(pool, e => scoreEntry(e, ctx, "consumable", slot.level, strategy), pickedKeys);
+      const entry = pickBudgeted(pool, e => scoreEntry(e, ctx, "consumable", slot.level, strategy), pickedKeys, plan, itemValue);
       if (!entry) continue;
       pickedKeys.add(`${entry.__pack}:${entry._id}`);
+      itemValue += priceToGP(entry);
       const raw = await rawItem(entry);
       if (raw) {
         toCreate.push(raw);
@@ -776,11 +900,17 @@ async function generateCuratedLoot(actor, { mode = "session" } = {}) {
     }
   }
 
-  if (toCreate.length) await actor.createEmbeddedDocuments("Item", toCreate);
-  if (plan.currency > 0) {
-    await addCurrencyGP(actor, plan.currency);
-    summary.push(`Currency: ${plan.currency} gp equivalent`);
+  let currencyToAdd = plan.currency;
+  if (plan.softBudget > 0 && itemValue + currencyToAdd > plan.softBudget) {
+    currencyToAdd = Math.max(0, Math.floor(plan.softBudget - itemValue));
   }
+
+  if (toCreate.length) await actor.createEmbeddedDocuments("Item", toCreate);
+  if (currencyToAdd > 0) {
+    await addCurrencyGP(actor, currencyToAdd);
+    summary.push(`Currency: ${currencyToAdd} gp equivalent`);
+  }
+  summary.push(`Budget: item value ${Math.round(itemValue * 100) / 100} gp + currency ${currencyToAdd} gp / soft cap ${plan.softBudget} gp`);
 
   const names = ctx.actors.map(a => a.name).join(", ") || "fallback party";
   const ignoredNames = (ctx.ignored ?? []).map(entry => `${entry.actor?.name ?? "Unknown"} (${entry.reason})`);
