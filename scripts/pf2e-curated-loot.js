@@ -832,6 +832,27 @@ function hardBlockReason(entry) {
   return null;
 }
 
+function isSingleUseConsumableEntry(entry) {
+  const traits = traitList(entry);
+  const blob = textBlob(entry);
+  const ctype = String(entry?.system?.consumableType?.value ?? entry?.system?.consumableType ?? "").toLowerCase();
+  const category = String(entry?.system?.category?.value ?? entry?.system?.category ?? "").toLowerCase();
+  const group = String(entry?.system?.group?.value ?? entry?.system?.group ?? "").toLowerCase();
+  const usage = String(entry?.system?.usage?.value ?? entry?.system?.usage ?? "").toLowerCase();
+  const singleUseTypes = new Set([
+    "ammo", "ammunition", "bomb", "catalyst", "drug", "elixir", "fulu", "oil",
+    "poison", "potion", "scroll", "snare", "talisman", "toolkit", "wand-ammo"
+  ]);
+  if (entry?.type === "consumable") return true;
+  if (singleUseTypes.has(ctype) || singleUseTypes.has(category) || singleUseTypes.has(group)) return true;
+  if (traits.some(t => singleUseTypes.has(t))) return true;
+  if (traits.includes("consumable") || usage.includes("consumable")) return true;
+  if (/\b(bomb|alchemist'?s fire|acid flask|bottled lightning|thunderstone|tanglefoot bag)\b/.test(blob)) return true;
+  if (/\b(scroll|catalyst|fulu|talisman|oil|potion|elixir|mutagen|poison|drug|snare)\b/.test(blob)) return true;
+  if (/\b(ammunition|arrow|bolt|round|shot)\b/.test(blob) && !/bandolier|quiver|case|container/.test(blob)) return true;
+  return false;
+}
+
 function audienceForEntry(entry, kind = null) {
   const traits = traitList(entry);
   const blob = textBlob(entry);
@@ -839,12 +860,13 @@ function audienceForEntry(entry, kind = null) {
   const keywords = new Set();
   const reasons = [];
   const blockReason = hardBlockReason(entry);
-  const isConsumable = entry?.type === "consumable";
-  const isPermanent = ["equipment", "weapon", "armor", "shield"].includes(entry?.type);
+  const forcedConsumable = isSingleUseConsumableEntry(entry);
+  const isConsumable = entry?.type === "consumable" || forcedConsumable;
+  const isPermanent = !forcedConsumable && ["equipment", "weapon", "armor", "shield"].includes(entry?.type);
   let general = false;
 
   if (kind === "consumable" && !isConsumable) return { general: false, roles, keywords, reasons, blockReason: "not a consumable" };
-  if (kind === "permanent" && !isPermanent) return { general: false, roles, keywords, reasons, blockReason: "not permanent equipment" };
+  if (kind === "permanent" && !isPermanent) return { general: false, roles, keywords, reasons, blockReason: forcedConsumable ? "single-use consumable, not permanent" : "not permanent equipment" };
   if (!isConsumable && !isPermanent) return { general: false, roles, keywords, reasons, blockReason: "unsupported item type" };
   if (blockReason) return { general: false, roles, keywords, reasons, blockReason };
 
