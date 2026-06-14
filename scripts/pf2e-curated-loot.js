@@ -604,13 +604,16 @@ function actorTraditions(actor) {
   return traditions;
 }
 
-function selectionPlan(ctx, mode) {
+function selectionPlan(ctx, mode, audit = []) {
   const spec = TREASURE_BY_LEVEL[ctx.level] ?? TREASURE_BY_LEVEL[1];
   const extraPcs = Math.max(0, ctx.partySize - 4);
   const fraction = Math.max(0.05, Math.min(1, Number(game.settings.get(MODULE, "curatedSessionFraction")) || 0.25));
 
   if (mode === "one-permanent") {
-    const bumped = Math.random() < (Number(game.settings.get(MODULE, "curatedAboveTableChance")) || 0);
+    const chance = Number(game.settings.get(MODULE, "curatedAboveTableChance")) || 0;
+    const roll = Math.random();
+    const bumped = roll < chance;
+    auditPush(audit, `Above-table permanent roll: ${formatPercentRoll(roll)} vs ${formatPercent(chance)} => ${bumped ? `yes, target level ${Math.min(20, ctx.level + 2)}` : `no, target level ${Math.min(20, ctx.level + 1)}`}.`);
     return {
       permanent: [{ targetLevel: Math.min(20, ctx.level + (bumped ? 2 : 1)), count: 1, source: bumped ? "spotlight above-table" : "spotlight" }],
       consumable: [],
@@ -624,8 +627,12 @@ function selectionPlan(ctx, mode) {
     const permanent = objectSlots(spec.permanent).map(s => ({ ...s, source: "table" }));
     const consumable = objectSlots(spec.consumable).map(s => ({ ...s, source: "table" }));
     for (let i = 0; i < extraPcs; i++) {
-      permanent.push({ targetLevel: Math.min(20, ctx.level + (Math.random() < 0.5 ? 1 : 0)), count: 1, source: "extra PC" });
+      const roll = Math.random();
+      const extraPermanentLevel = Math.min(20, ctx.level + (roll < 0.5 ? 1 : 0));
+      auditPush(audit, `Extra-PC permanent slot ${i + 1}: ${formatPercentRoll(roll)} vs 50% => level ${extraPermanentLevel}.`);
+      permanent.push({ targetLevel: extraPermanentLevel, count: 1, source: "extra PC" });
       consumable.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1, source: "extra PC" }, { targetLevel: ctx.level, count: 1, source: "extra PC" });
+      auditPush(audit, `Extra-PC consumable slots ${i + 1}: fixed levels ${Math.min(20, ctx.level + 1)} and ${ctx.level}.`);
     }
     return {
       permanent,
@@ -639,20 +646,38 @@ function selectionPlan(ctx, mode) {
   const fullPermanent = objectSlots(spec.permanent);
   const fullConsumable = objectSlots(spec.consumable);
   for (let i = 0; i < extraPcs; i++) {
-    fullPermanent.push({ targetLevel: Math.min(20, ctx.level + (Math.random() < 0.5 ? 1 : 0)), count: 1 });
+    const roll = Math.random();
+    const extraPermanentLevel = Math.min(20, ctx.level + (roll < 0.5 ? 1 : 0));
+    auditPush(audit, `Session extra-PC permanent base slot ${i + 1}: ${formatPercentRoll(roll)} vs 50% => level ${extraPermanentLevel}.`);
+    fullPermanent.push({ targetLevel: extraPermanentLevel, count: 1 });
     fullConsumable.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1 }, { targetLevel: ctx.level, count: 1 });
+    auditPush(audit, `Session extra-PC consumable base slots ${i + 1}: fixed levels ${Math.min(20, ctx.level + 1)} and ${ctx.level}.`);
   }
 
-  const permanent = fractionalSlots(fullPermanent, fraction).map(s => ({ ...s, source: "session slice" }));
-  const consumable = fractionalSlots(fullConsumable, fraction).map(s => ({ ...s, source: "session slice" }));
+  const permanent = fractionalSlots(fullPermanent, fraction, audit, "permanent").map(s => ({ ...s, source: "session slice" }));
+  const consumable = fractionalSlots(fullConsumable, fraction, audit, "consumable").map(s => ({ ...s, source: "session slice" }));
 
-  if (!permanent.length) permanent.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1, source: "session minimum" });
-  if (Math.random() < (Number(game.settings.get(MODULE, "curatedAboveTableChance")) || 0)) {
-    const slot = permanent[Math.floor(Math.random() * permanent.length)];
+  if (!permanent.length) {
+    permanent.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1, source: "session minimum" });
+    auditPush(audit, `Session minimum: added one permanent slot at level ${Math.min(20, ctx.level + 1)} because rounding produced none.`);
+  }
+  const chance = Number(game.settings.get(MODULE, "curatedAboveTableChance")) || 0;
+  const aboveRoll = Math.random();
+  const above = aboveRoll < chance;
+  auditPush(audit, `Session above-table permanent roll: ${formatPercentRoll(aboveRoll)} vs ${formatPercent(chance)} => ${above ? "yes" : "no"}.`);
+  if (above) {
+    const slotRoll = Math.random();
+    const slotIndex = Math.min(permanent.length - 1, Math.floor(slotRoll * permanent.length));
+    const slot = permanent[slotIndex];
+    const oldLevel = slot.targetLevel;
     slot.targetLevel = Math.min(20, ctx.level + 2, slot.targetLevel + 1);
     slot.source = `${slot.source}; above-table`;
+    auditPush(audit, `Above-table slot choice: ${formatPercentRoll(slotRoll)} across ${permanent.length} permanent slot groups => group ${slotIndex + 1}, level ${oldLevel} -> ${slot.targetLevel}.`);
   }
-  if (!consumable.length) consumable.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1, source: "session minimum" });
+  if (!consumable.length) {
+    consumable.push({ targetLevel: Math.min(20, ctx.level + 1), count: 1, source: "session minimum" });
+    auditPush(audit, `Session minimum: added one consumable slot at level ${Math.min(20, ctx.level + 1)} because rounding produced none.`);
+  }
 
   const currency = Math.floor((spec.currency + extraPcs * spec.extraPc) * fraction);
   return {
@@ -668,12 +693,20 @@ function objectSlots(obj) {
   return Object.entries(obj ?? {}).map(([targetLevel, count]) => ({ targetLevel: Number(targetLevel), count: Number(count) || 0 }));
 }
 
-function fractionalSlots(slots, fraction) {
+function fractionalSlots(slots, fraction, audit = [], label = "slot") {
   const out = [];
   for (const slot of slots) {
     const expected = Math.max(0, (Number(slot.count) || 0) * fraction);
     const whole = Math.floor(expected);
-    const extra = Math.random() < (expected - whole) ? 1 : 0;
+    const fractional = expected - whole;
+    let extra = 0;
+    if (fractional > 0) {
+      const roll = Math.random();
+      extra = roll < fractional ? 1 : 0;
+      auditPush(audit, `Session ${label} slot rounding: level ${slot.targetLevel} ×${slot.count} at ${formatPercent(fraction)} = ${roundGp(expected)}; ${formatPercentRoll(roll)} vs ${formatPercent(fractional)} => ${extra ? "+1" : "+0"} stochastic slot.`);
+    } else {
+      auditPush(audit, `Session ${label} slot rounding: level ${slot.targetLevel} ×${slot.count} at ${formatPercent(fraction)} = ${roundGp(expected)}; no stochastic roll needed.`);
+    }
     const count = whole + extra;
     if (count > 0) out.push({ targetLevel: slot.targetLevel, count });
   }
@@ -897,18 +930,31 @@ function isUsefulEntry(entry, ctx, kind, lane, spotlight) {
   return audienceMatchesParty(audience, ctx);
 }
 
-function chooseLane(mode, kind, ctx) {
-  if (mode === "one-permanent") return { type: "spotlight", spotlight: randomSpotlight(ctx) };
+function chooseLane(mode, kind, ctx, audit = [], label = "item") {
+  if (mode === "one-permanent") {
+    auditPush(audit, `${label}: forced spotlight lane for One Relevant Permanent.`);
+    return { type: "spotlight", spotlight: randomSpotlight(ctx, audit, label) };
+  }
   const roll = Math.random();
-  if (roll < 0.70) return { type: "general", spotlight: null };
-  if (roll < 0.90) return { type: "party", spotlight: null };
-  return { type: "spotlight", spotlight: randomSpotlight(ctx) };
+  let result;
+  if (roll < 0.70) result = { type: "general", spotlight: null };
+  else if (roll < 0.90) result = { type: "party", spotlight: null };
+  else result = { type: "spotlight", spotlight: randomSpotlight(ctx, audit, label) };
+  auditPush(audit, `${label}: lane roll ${formatPercentRoll(roll)} => ${laneLabelFor(result)} (01–70 general, 71–90 party, 91–100 spotlight).`);
+  return result;
 }
 
-function randomSpotlight(ctx) {
+function randomSpotlight(ctx, audit = [], label = "spotlight") {
   const profiles = ctx.actorProfiles.filter(p => p.actor && p.classSlug);
-  if (!profiles.length) return null;
-  return profiles[Math.floor(Math.random() * profiles.length)];
+  if (!profiles.length) {
+    auditPush(audit, `${label}: spotlight requested but no classed PCs were available.`);
+    return null;
+  }
+  const roll = Math.random();
+  const index = Math.min(profiles.length - 1, Math.floor(roll * profiles.length));
+  const picked = profiles[index];
+  auditPush(audit, `${label}: spotlight PC roll ${formatPercentRoll(roll)} across ${profiles.length} PCs => ${picked.actor?.name ?? "Unknown"}${picked.classSlug ? ` (${picked.classSlug})` : ""}.`);
+  return picked;
 }
 
 function scoreEntry(entry, ctx, kind, targetLevel, lane = "party", spotlight = null) {
@@ -954,7 +1000,7 @@ function scoreEntry(entry, ctx, kind, targetLevel, lane = "party", spotlight = n
     if (blob.includes(narrow)) score -= 6;
   }
 
-  return Math.max(0, score) * rarityMultiplier(entry) * (0.9 + Math.random() * 0.2);
+  return Math.max(0, score) * rarityMultiplier(entry);
 }
 
 function scoreAgainstCounters(blob, traits, roles, keywords, traditions, partyWeight) {
@@ -973,18 +1019,29 @@ function scoreAgainstCounters(blob, traits, roles, keywords, traditions, partyWe
   return score;
 }
 
-function weightedPick(pool, scoreFn, alreadyPicked, budgetFilter = null) {
+function weightedPick(pool, scoreFn, alreadyPicked, budgetFilter = null, audit = [], label = "item pick") {
   const candidates = pool.filter(e => !alreadyPicked.has(`${e.__pack}:${e._id}`) && (!budgetFilter || budgetFilter(e)));
-  if (!candidates.length) return null;
+  if (!candidates.length) {
+    auditPush(audit, `${label}: no candidates after duplicate/budget filters.`);
+    return null;
+  }
   const weights = candidates.map(scoreFn);
   const total = weights.reduce((sum, weight) => sum + Math.max(0, weight), 0);
-  if (total <= 0) return null;
-  let roll = Math.random() * total;
-  for (let i = 0; i < candidates.length; i++) {
-    roll -= Math.max(0, weights[i]);
-    if (roll <= 0) return candidates[i];
+  if (total <= 0) {
+    auditPush(audit, `${label}: no candidates with positive weight among ${candidates.length} candidates.`);
+    return null;
   }
-  return candidates[candidates.length - 1];
+  const rollBase = Math.random();
+  const target = rollBase * total;
+  let remaining = target;
+  let selectedIndex = candidates.length - 1;
+  for (let i = 0; i < candidates.length; i++) {
+    remaining -= Math.max(0, weights[i]);
+    if (remaining <= 0) { selectedIndex = i; break; }
+  }
+  const entry = candidates[selectedIndex];
+  auditPush(audit, `${label}: weighted pick ${roundGp(target)} / ${roundGp(total)} among ${candidates.length} candidates => ${entry.name} [${itemRarity(entry)} ×${roundGp(rarityMultiplier(entry))}, weight ${roundGp(weights[selectedIndex])}, price ${roundGp(priceToGP(entry))} gp].`);
+  return entry;
 }
 
 function poolFor(entries, ctx, kind, targetLevel, lane, spotlight, exactLevels) {
@@ -1014,8 +1071,10 @@ async function generateCuratedLoot(actor, { mode = "session" } = {}) {
   if (!isLootActor(actor)) return ui.notifications?.warn("Curated loot can only be generated on a loot actor.");
 
   const ctx = partyContext();
+  const audit = [];
   const entries = await preloadCuratedIndex();
-  const plan = selectionPlan(ctx, mode);
+  const plan = selectionPlan(ctx, mode, audit);
+  auditPush(audit, `Rarity weights: common ×1, uncommon ×${roundGp(Number(game.settings.get(MODULE, "curatedUncommonWeight")) || 0)}, rare ×${roundGp(Number(game.settings.get(MODULE, "curatedRareWeight")) || 0)}, unique blocked.`);
   const pickedKeys = new Set();
   const toCreate = [];
   const summary = [];
@@ -1025,23 +1084,27 @@ async function generateCuratedLoot(actor, { mode = "session" } = {}) {
 
   const choose = async (kind, slot) => {
     for (let i = 0; i < slot.count; i++) {
-      const lane = chooseLane(mode, kind, ctx);
+      const slotLabel = `${kind === "permanent" ? "Permanent" : "Consumable"} target level ${slot.targetLevel}`;
+      const lane = chooseLane(mode, kind, ctx, audit, slotLabel);
       let pool = poolFor(entries, ctx, kind, slot.targetLevel, lane.type, lane.spotlight, plan.exactLevels);
       let effectiveLane = lane;
       if (!pool.length && lane.type === "general") {
         effectiveLane = { type: "party", spotlight: null };
         pool = poolFor(entries, ctx, kind, slot.targetLevel, "party", null, plan.exactLevels);
+        auditPush(audit, `${slotLabel}: general lane had no usable candidates; fell back to party-weighted lane.`);
       }
       if (!pool.length && lane.type !== "general") {
         effectiveLane = { type: "general", spotlight: null };
         pool = poolFor(entries, ctx, kind, slot.targetLevel, "general", null, plan.exactLevels);
+        auditPush(audit, `${slotLabel}: selected lane had no usable candidates; fell back to general lane.`);
       }
       const budgetFilter = (entry) => softCap <= 0 || (itemValue + priceToGP(entry) + plan.currency) <= softCap;
-      const entry = weightedPick(pool, e => scoreEntry(e, ctx, kind, slot.targetLevel, effectiveLane.type, effectiveLane.spotlight), pickedKeys, budgetFilter)
-        ?? weightedPick(pool, e => scoreEntry(e, ctx, kind, slot.targetLevel, effectiveLane.type, effectiveLane.spotlight), pickedKeys);
+      const pickLabel = `${slotLabel} (${laneLabelFor(effectiveLane)})`;
+      const entry = weightedPick(pool, e => scoreEntry(e, ctx, kind, slot.targetLevel, effectiveLane.type, effectiveLane.spotlight), pickedKeys, budgetFilter, audit, `${pickLabel}, budgeted`)
+        ?? weightedPick(pool, e => scoreEntry(e, ctx, kind, slot.targetLevel, effectiveLane.type, effectiveLane.spotlight), pickedKeys, null, audit, `${pickLabel}, over-budget fallback`);
       if (!entry) continue;
       pickedKeys.add(`${entry.__pack}:${entry._id}`);
-      const raw = await rawItem(entry, ctx, kind, slot.targetLevel, effectiveLane, mode);
+      const raw = await rawItem(entry, ctx, kind, slot.targetLevel, effectiveLane, mode, audit);
       if (!raw) continue;
       const value = priceToGP(raw) || priceToGP(entry);
       itemValue += value;
@@ -1057,7 +1120,13 @@ async function generateCuratedLoot(actor, { mode = "session" } = {}) {
   for (const slot of plan.consumable) await choose("consumable", slot);
 
   let currency = plan.currency;
-  if (softCap > 0 && itemValue + currency > softCap) currency = Math.max(0, Math.floor(softCap - itemValue));
+  if (softCap > 0 && itemValue + currency > softCap) {
+    const oldCurrency = currency;
+    currency = Math.max(0, Math.floor(softCap - itemValue));
+    auditPush(audit, `Budget adjustment: item value ${roundGp(itemValue)} gp plus planned currency ${roundGp(oldCurrency)} gp exceeded soft cap ${roundGp(softCap)} gp; currency reduced to ${roundGp(currency)} gp.`);
+  } else {
+    auditPush(audit, `Budget check: item value ${roundGp(itemValue)} gp plus planned currency ${roundGp(currency)} gp fits soft cap ${roundGp(softCap)} gp.`);
+  }
 
   if (toCreate.length) {
     try {
@@ -1092,7 +1161,8 @@ async function generateCuratedLoot(actor, { mode = "session" } = {}) {
     <strong>Ignored non-PC actors:</strong> ${escapeHtml(ignored)}<br>
     <strong>Rules slots:</strong> ${escapeHtml(planSummary)}</p>
     <ul>${summary.map(s => `<li>${escapeHtml(s)}</li>`).join("")}</ul>
-    <p><strong>Budget:</strong> item value ${roundGp(itemValue)} gp + currency ${roundGp(currency)} gp / soft cap ${roundGp(softCap)} gp</p>`;
+    <p><strong>Budget:</strong> item value ${roundGp(itemValue)} gp + currency ${roundGp(currency)} gp / soft cap ${roundGp(softCap)} gp</p>
+    ${auditHtml(audit)}`;
   ChatMessage.create({ content, whisper: ChatMessage.getWhisperRecipients("GM") });
   ui.notifications?.info(`Curated loot generated: ${summary.length} reward entries.`);
 }
@@ -1112,15 +1182,32 @@ function roundGp(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
 
+function auditPush(audit, message) {
+  if (Array.isArray(audit) && message) audit.push(String(message));
+}
+
+function formatPercent(value) {
+  return `${roundGp((Number(value) || 0) * 100)}%`;
+}
+
+function formatPercentRoll(value) {
+  return `${roundGp((Number(value) || 0) * 100)}%`;
+}
+
+function auditHtml(audit) {
+  if (!audit?.length) return "";
+  return `<details><summary><strong>Roll audit</strong> (${audit.length} entries)</summary><ol>${audit.map(s => `<li>${escapeHtml(s)}</li>`).join("")}</ol></details>`;
+}
+
 function escapeHtml(value) {
   const div = document.createElement("div");
   div.textContent = String(value ?? "");
   return div.innerHTML;
 }
 
-async function rawItem(entry, ctx, kind, targetLevel, lane, mode) {
+async function rawItem(entry, ctx, kind, targetLevel, lane, mode, audit = []) {
   if (kind === "consumable" && game.settings.get(MODULE, "curatedSpecificScrolls") && isGenericScroll(entry)) {
-    const scroll = await makeSpecificScroll(entry, ctx, targetLevel, lane);
+    const scroll = await makeSpecificScroll(entry, ctx, targetLevel, lane, audit);
     if (scroll) return scroll;
   }
 
@@ -1157,9 +1244,10 @@ function scrollRankFromEntry(entry, targetLevel) {
   return Math.max(1, Math.min(10, Math.ceil(level / 2)));
 }
 
-async function makeSpecificScroll(scrollEntry, ctx, targetLevel, lane) {
+async function makeSpecificScroll(scrollEntry, ctx, targetLevel, lane, audit = []) {
   const rank = scrollRankFromEntry(scrollEntry, targetLevel);
-  const spellEntry = await pickSpellForScroll(rank, ctx, lane);
+  auditPush(audit, `Specific scroll generation: ${scrollEntry.name} mapped to rank ${rank}.`);
+  const spellEntry = await pickSpellForScroll(rank, ctx, lane, audit);
   if (!spellEntry) return null;
   const spellDoc = await getSpellDoc(spellEntry);
   if (!spellDoc) return null;
@@ -1236,24 +1324,40 @@ async function trySystemScrollGeneration(spellDoc, rank) {
   return null;
 }
 
-async function pickSpellForScroll(rank, ctx, lane) {
+async function pickSpellForScroll(rank, ctx, lane, audit = []) {
   const spells = await preloadSpellIndex();
   const traditions = new Set([...ctx.traditions.keys()]);
   if (!traditions.size) {
     for (const role of ["arcane", "divine", "occult", "primal"]) if (counterHas(ctx.roles, role)) traditions.add(role);
   }
   let pool = spells.filter(spell => isScrollableSpell(spell, rank, traditions));
-  if (!pool.length) pool = spells.filter(spell => isScrollableSpell(spell, rank, null));
-  if (!pool.length) return null;
+  if (!pool.length) {
+    pool = spells.filter(spell => isScrollableSpell(spell, rank, null));
+    auditPush(audit, `Specific scroll spell pool: no party-tradition rank ${rank} spells found; using all scrollable rank ${rank} spells.`);
+  }
+  if (!pool.length) {
+    auditPush(audit, `Specific scroll spell pool: no scrollable rank ${rank} spells found.`);
+    return null;
+  }
   const weights = pool.map(spell => scoreSpellForScroll(spell, ctx, lane));
   const total = weights.reduce((s, w) => s + Math.max(0, w), 0);
-  if (total <= 0) return pool[Math.floor(Math.random() * pool.length)];
-  let roll = Math.random() * total;
-  for (let i = 0; i < pool.length; i++) {
-    roll -= Math.max(0, weights[i]);
-    if (roll <= 0) return pool[i];
+  if (total <= 0) {
+    const fallbackRoll = Math.random();
+    const fallbackIndex = Math.min(pool.length - 1, Math.floor(fallbackRoll * pool.length));
+    auditPush(audit, `Specific scroll spell pick: weights were zero; uniform roll ${formatPercentRoll(fallbackRoll)} across ${pool.length} spells => ${pool[fallbackIndex].name}.`);
+    return pool[fallbackIndex];
   }
-  return pool[pool.length - 1];
+  const rollBase = Math.random();
+  const target = rollBase * total;
+  let remaining = target;
+  let selectedIndex = pool.length - 1;
+  for (let i = 0; i < pool.length; i++) {
+    remaining -= Math.max(0, weights[i]);
+    if (remaining <= 0) { selectedIndex = i; break; }
+  }
+  const spell = pool[selectedIndex];
+  auditPush(audit, `Specific scroll spell pick: weighted roll ${roundGp(target)} / ${roundGp(total)} among ${pool.length} rank ${rank} spells => ${spell.name} [${itemRarity(spell)} ×${roundGp(rarityMultiplier(spell))}, weight ${roundGp(weights[selectedIndex])}].`);
+  return spell;
 }
 
 function isScrollableSpell(spell, rank, traditions) {
@@ -1279,7 +1383,7 @@ function scoreSpellForScroll(spell, ctx, lane) {
   }
   const partyWeight = Number(game.settings.get(MODULE, "curatedPartyWeight")) || 0;
   score += scoreAgainstCounters(blob, traitList(spell), ctx.roles, ctx.keywords, ctx.traditions, lane.type === "spotlight" ? partyWeight * 0.75 : partyWeight * 0.5);
-  return Math.max(0.01, score) * (0.9 + Math.random() * 0.2);
+  return Math.max(0.01, score);
 }
 
 function ordinal(n) {
