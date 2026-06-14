@@ -247,9 +247,9 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
   globalThis[API_NAME] = {
-    rollSessionTreasure: (actor) => generateCuratedLoot(actor, { mode: "session" }),
-    rollFullLevelTreasure: (actor) => generateCuratedLoot(actor, { mode: "full-level" }),
-    rollOnePermanent: (actor) => generateCuratedLoot(actor, { mode: "one-permanent" }),
+    rollSessionTreasure: (actor) => safeGenerateCuratedLoot(actor, { mode: "session" }),
+    rollFullLevelTreasure: (actor) => safeGenerateCuratedLoot(actor, { mode: "full-level" }),
+    rollOnePermanent: (actor) => safeGenerateCuratedLoot(actor, { mode: "one-permanent" }),
     getSessionParty,
     resolveSessionParty,
     partyContext,
@@ -273,19 +273,19 @@ Hooks.on("getActorSheetHeaderButtons", (app, buttons) => {
       label: "One Relevant Permanent",
       class: "pf2e-curated-one-permanent",
       icon: "fas fa-hat-wizard",
-      onclick: () => generateCuratedLoot(actor, { mode: "one-permanent" }),
+      onclick: () => safeGenerateCuratedLoot(actor, { mode: "one-permanent" }),
     });
     addOnce({
       label: "Session Treasure",
       class: "pf2e-curated-session-treasure",
       icon: "fas fa-gem",
-      onclick: () => generateCuratedLoot(actor, { mode: "session" }),
+      onclick: () => safeGenerateCuratedLoot(actor, { mode: "session" }),
     });
     addOnce({
       label: "Curated Full Level",
       class: "pf2e-curated-full-treasure",
       icon: "fas fa-wand-magic-sparkles",
-      onclick: () => generateCuratedLoot(actor, { mode: "full-level" }),
+      onclick: () => safeGenerateCuratedLoot(actor, { mode: "full-level" }),
     });
   } catch (error) {
     console.warn(`${MODULE}: failed to add curated header buttons`, error);
@@ -387,14 +387,34 @@ function setItemQuantity(raw, quantity = 1) {
   raw.system = raw.system ?? {};
   const current = raw.system.quantity;
 
-  // PF2e physical items on recent system versions use a value object for
-  // quantity. Writing a bare number can throw errors like:
-  // "Cannot use 'in' operator to search for 'value' in 1" during data prep.
-  if (current && typeof current === "object" && !Array.isArray(current)) {
-    current.value = quantity;
-    raw.system.quantity = current;
+  // Preserve the PF2e system's source-data shape. Different PF2e versions and
+  // item types have used either `quantity: 1` or `quantity: { value: 1 }`.
+  // Forcing either shape can break item creation in the other schema.
+  if (current && typeof current === "object" && !Array.isArray(current) && Object.prototype.hasOwnProperty.call(current, "value")) {
+    raw.system.quantity = { ...current, value: quantity };
+  } else if (typeof current === "number") {
+    raw.system.quantity = quantity;
+  } else if (current == null) {
+    // Most compendium physical items already carry quantity. If this item does
+    // not, let the PF2e schema apply its default instead of guessing a shape.
+    delete raw.system.quantity;
   } else {
-    raw.system.quantity = { value: quantity };
+    raw.system.quantity = current;
+  }
+}
+
+function setLevelValue(raw, level) {
+  raw.system = raw.system ?? {};
+  const current = raw.system.level;
+  const numeric = clampLevel(level);
+  if (current && typeof current === "object" && !Array.isArray(current) && Object.prototype.hasOwnProperty.call(current, "value")) {
+    raw.system.level = { ...current, value: numeric };
+  } else if (typeof current === "number") {
+    raw.system.level = numeric;
+  } else if (current == null) {
+    raw.system.level = { value: numeric };
+  } else {
+    raw.system.level = current;
   }
 }
 
@@ -687,12 +707,13 @@ async function preloadCuratedIndex() {
   if (cache.ready) return cache.entries;
   const packSetting = game.settings.get(MODULE, "pack-equipment") || game.settings.get(MODULE, "packEquipment") || "pf2e.equipment-srd";
   const packIds = String(packSetting).split(",").map(s => s.trim()).filter(Boolean);
-  const fields = [
-    "type", "name", "system.level.value", "system.price.value", "system.price.per",
-    "system.traits", "system.category", "system.category.value", "system.consumableType.value",
-    "system.usage.value", "system.slug", "system.group", "system.group.value", "system.baseItem",
-    "system.baseItem.value", "system.preciousMaterial.value", "img"
-  ];
+  // Ask the compendium index for the top-level system object instead of
+  // nested paths such as system.level.value. Some PF2e entries still use a
+  // primitive at one of these intermediate paths, and Foundry's nested-path
+  // indexer can throw: "Cannot use 'in' operator to search for 'value' in 1".
+  // The curated scorer already handles both { value } objects and primitive
+  // values, so loading the top-level system data is safer across PF2e versions.
+  const fields = ["type", "name", "img", "system"];
 
   const entries = [];
   for (const packId of packIds) {
@@ -701,7 +722,13 @@ async function preloadCuratedIndex() {
       console.warn(`${MODULE}: curated loot missing compendium ${packId}`);
       continue;
     }
-    const index = await pack.getIndex({ fields });
+    let index;
+    try {
+      index = await pack.getIndex({ fields });
+    } catch (error) {
+      console.warn(`${MODULE}: curated loot system-field index failed for ${packId}; retrying with default index`, error);
+      index = await pack.getIndex();
+    }
     for (const entry of index) entries.push({ ...entry, __pack: packId });
   }
   cache.entries = entries;
@@ -712,15 +739,19 @@ async function preloadCuratedIndex() {
 async function preloadSpellIndex() {
   if (cache.spellsReady) return cache.spellEntries;
   const packIds = ["pf2e.spells-srd"];
-  const fields = [
-    "type", "name", "system.level.value", "system.traits", "system.traditions.value",
-    "system.category.value", "system.slug", "system.time.value", "img"
-  ];
+  // Same nested-path safety as equipment indexing.
+  const fields = ["type", "name", "img", "system"];
   const entries = [];
   for (const packId of packIds) {
     const pack = game.packs.get(packId);
     if (!pack) continue;
-    const index = await pack.getIndex({ fields });
+    let index;
+    try {
+      index = await pack.getIndex({ fields });
+    } catch (error) {
+      console.warn(`${MODULE}: curated loot system-field index failed for ${packId}; retrying with default index`, error);
+      index = await pack.getIndex();
+    }
     for (const entry of index) entries.push({ ...entry, __pack: packId });
   }
   cache.spellEntries = entries;
@@ -968,6 +999,16 @@ function poolFor(entries, ctx, kind, targetLevel, lane, spotlight, exactLevels) 
   return [];
 }
 
+async function safeGenerateCuratedLoot(actor, options = {}) {
+  try {
+    return await generateCuratedLoot(actor, options);
+  } catch (error) {
+    console.error(`${MODULE}: curated loot generation failed`, { actor, options, error });
+    ui.notifications?.error(`Curated loot failed: ${error?.message ?? error}`);
+    throw error;
+  }
+}
+
 async function generateCuratedLoot(actor, { mode = "session" } = {}) {
   if (!actor) return ui.notifications?.warn("No loot actor selected.");
   if (!isLootActor(actor)) return ui.notifications?.warn("Curated loot can only be generated on a loot actor.");
@@ -1146,8 +1187,7 @@ async function makeSpecificScroll(scrollEntry, ctx, targetLevel, lane) {
   raw.img = spellDoc.img ?? raw.img;
   raw.system = raw.system ?? {};
   setItemQuantity(raw, 1);
-  raw.system.level = raw.system.level ?? {};
-  raw.system.level.value = SCROLL_ITEM_LEVEL_BY_RANK[rank] ?? entryLevel(scrollEntry);
+  setLevelValue(raw, SCROLL_ITEM_LEVEL_BY_RANK[rank] ?? entryLevel(scrollEntry));
   raw.system.price = raw.system.price ?? {};
   raw.system.price.value = { gp: SCROLL_PRICE_BY_RANK[rank] ?? priceToGP(scrollEntry) };
   raw.system.spell = spellRaw;
