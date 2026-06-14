@@ -348,6 +348,22 @@ function priceToGP(itemOrEntry) {
   return Number.isFinite(gp) ? Math.max(0, gp) : 0;
 }
 
+
+function setItemQuantity(raw, quantity = 1) {
+  raw.system = raw.system ?? {};
+  const current = raw.system.quantity;
+
+  // PF2e physical items on recent system versions use a value object for
+  // quantity. Writing a bare number can throw errors like:
+  // "Cannot use 'in' operator to search for 'value' in 1" during data prep.
+  if (current && typeof current === "object" && !Array.isArray(current)) {
+    current.value = quantity;
+    raw.system.quantity = current;
+  } else {
+    raw.system.quantity = { value: quantity };
+  }
+}
+
 function itemRarity(entryOrItem) {
   const traits = entryOrItem?.system?.traits ?? {};
   const fromField = traits.rarity ? String(traits.rarity).toLowerCase() : null;
@@ -1024,7 +1040,7 @@ async function rawItem(entry, ctx, kind, targetLevel, lane, mode) {
   const raw = doc.toObject();
   delete raw._id;
   raw.system = raw.system ?? {};
-  raw.system.quantity = 1;
+  setItemQuantity(raw, 1);
   raw.flags = raw.flags ?? {};
   raw.flags[MODULE] = {
     ...(raw.flags[MODULE] ?? {}),
@@ -1081,7 +1097,7 @@ async function makeSpecificScroll(scrollEntry, ctx, targetLevel, lane) {
   raw.name = `Scroll of ${spellDoc.name} (${ordinal(rank)} Rank)`;
   raw.img = spellDoc.img ?? raw.img;
   raw.system = raw.system ?? {};
-  raw.system.quantity = 1;
+  setItemQuantity(raw, 1);
   raw.system.level = raw.system.level ?? {};
   raw.system.level.value = SCROLL_ITEM_LEVEL_BY_RANK[rank] ?? entryLevel(scrollEntry);
   raw.system.price = raw.system.price ?? {};
@@ -1123,7 +1139,7 @@ async function trySystemScrollGeneration(spellDoc, rank) {
       if (!raw?.name) continue;
       delete raw._id;
       raw.system = raw.system ?? {};
-      raw.system.quantity = 1;
+      setItemQuantity(raw, 1);
       return raw;
     } catch (_error) {
       // Try the next known PF2e API shape.
@@ -1204,13 +1220,31 @@ async function addCurrencyGP(actor, gpAmount) {
     console.warn(`${MODULE}: PF2e coin API failed; falling back to actor update`, error);
   }
 
-  const path = actor?.system?.currency ? "system.currency" : "system.currency";
-  const existing = foundry.utils.getProperty(actor, path) ?? {};
-  const update = {};
-  for (const [key, value] of Object.entries(currency)) {
-    const current = existing?.[key];
-    if (current && typeof current === "object" && "value" in current) update[`${path}.${key}.value`] = (Number(current.value) || 0) + value;
-    else update[`${path}.${key}`] = (Number(current) || 0) + value;
+  const path = "system.currency";
+  const valueShapeUpdate = {};
+  const numberShapeUpdate = {};
+
+  for (const [key, added] of Object.entries(currency)) {
+    const valuePath = `${path}.${key}.value`;
+    const numberPath = `${path}.${key}`;
+    const currentValue = foundry.utils.getProperty(actor, valuePath);
+    const currentDirect = foundry.utils.getProperty(actor, numberPath);
+    const current = Number(
+      currentValue ??
+      (currentDirect && typeof currentDirect === "object" && !Array.isArray(currentDirect) ? currentDirect.value : currentDirect) ??
+      0
+    ) || 0;
+    valueShapeUpdate[valuePath] = current + added;
+    numberShapeUpdate[numberPath] = current + added;
   }
-  return actor.update(update);
+
+  // Try the PF2e v13 value-object currency shape first. If a world/system build
+  // still uses bare numeric currency, fall back to that shape without surfacing
+  // the intermediate schema error to the GM.
+  try {
+    return await actor.update(valueShapeUpdate);
+  } catch (valueShapeError) {
+    console.warn(`${MODULE}: value-shaped currency update failed; trying numeric currency update`, valueShapeError);
+    return actor.update(numberShapeUpdate);
+  }
 }
