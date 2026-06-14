@@ -1,6 +1,6 @@
 {
-  "id": "pf2e-autoloot",
-  "title": "PF2e Autoloot",
+  "id": "pf2e-curated-autoloot",
+  "title": "PF2e Curated Autoloot",
   "version": "#{VERSION}#",
   "compatibility": {
     "minimum": "13",
